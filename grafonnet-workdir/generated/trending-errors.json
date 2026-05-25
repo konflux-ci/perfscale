@@ -1,174 +1,41 @@
 {
-  "annotations": {
-    "list": [
-      {
-        "builtIn": 1,
-        "datasource": {
-          "type": "grafana",
-          "uid": "-- Grafana --"
-        },
-        "enable": true,
-        "hide": true,
-        "iconColor": "rgba(0, 211, 255, 1)",
-        "name": "Annotations & Alerts",
-        "target": {
-          "limit": 100,
-          "matchAny": false,
-          "tags": [],
-          "type": "dashboard"
-        },
-        "type": "dashboard"
-      }
-    ]
-  },
-  "editable": true,
-  "fiscalYearStartMonth": 0,
-  "graphTooltip": 0,
-  "id": 62788,
-  "links": [],
-  "liveNow": false,
+  "description": "Dashboard for tracking error trends.",
   "panels": [
     {
       "datasource": {
-        "type": "postgres",
-        "uid": "lJMKSZxHk"
+        "type": "datasource",
+        "uid": "-- Mixed --"
       },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "axisSoftMin": 0,
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 20,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "smooth",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "normal"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "decimals": 0,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
+            "lineInterpolation": "smooth"
           },
           "unit": "none"
-        },
-        "overrides": []
+        }
       },
       "gridPos": {
         "h": 13,
-        "w": 24,
-        "x": 0,
-        "y": 0
+        "w": 24
       },
-      "id": 3,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "pluginVersion": "9.2.10",
+      "id": 1,
+      "pluginVersion": "v11.4.0",
       "targets": [
         {
           "datasource": {
             "type": "postgres",
-            "uid": "lJMKSZxHk"
+            "uid": "${datasource}"
           },
           "format": "time_series",
-          "group": [],
-          "metricColumn": "none",
-          "rawQuery": true,
-          "rawSql": "SELECT\n    $__timeGroupAlias(start, '1h'),\n    COUNT(*) AS \"passes\"\nFROM\n    data\nWHERE\n    horreum_testid = 372\n    AND $__timeFilter(start)\n    AND label_values->>'.results.measurements.KPI.mean' != '-1'\nGROUP BY 1\nORDER BY 1;",
-          "refId": "A",
-          "select": [
-            [
-              {
-                "params": [
-                  "value"
-                ],
-                "type": "column"
-              }
-            ]
-          ],
-          "timeColumn": "time",
-          "where": [
-            {
-              "name": "$__timeFilter",
-              "params": [],
-              "type": "macro"
-            }
-          ]
+          "rawSql": "SELECT\n    $__timeGroupAlias(start, '1h'),\n    COUNT(*) AS \"passes\"\nFROM\n    data\nWHERE\n    horreum_testid = 372\n    AND $__timeFilter(start)\n    AND label_values->>'.results.measurements.KPI.mean' != '-1'\nGROUP BY 1\nORDER BY 1;\n"
         },
         {
           "datasource": {
             "type": "postgres",
-            "uid": "lJMKSZxHk"
+            "uid": "${datasource}"
           },
           "format": "time_series",
-          "group": [],
-          "hide": false,
-          "metricColumn": "none",
-          "rawQuery": true,
-          "rawSql": "SELECT\n    $__timeGroupAlias(start, '1h'),\n    COUNT(*) AS \"failures\"\nFROM\n    data\nWHERE\n    horreum_testid = 372\n    AND $__timeFilter(start)\n    AND label_values->>'.results.measurements.KPI.mean' = '-1'\nGROUP BY 1\nORDER BY 1;",
-          "refId": "B",
-          "select": [
-            [
-              {
-                "params": [
-                  "value"
-                ],
-                "type": "column"
-              }
-            ]
-          ],
-          "timeColumn": "time",
-          "where": [
-            {
-              "name": "$__timeFilter",
-              "params": [],
-              "type": "macro"
-            }
-          ]
+          "rawSql": "SELECT\n    $__timeGroupAlias(start, '1h'),\n    COUNT(*) AS \"failures\"\nFROM\n    data\nWHERE\n    horreum_testid = 372\n    AND $__timeFilter(start)\n    AND label_values->>'.results.measurements.KPI.mean' = '-1'\nGROUP BY 1\nORDER BY 1;\n"
         }
       ],
       "title": "Runs count grand total",
@@ -176,114 +43,34 @@
     },
     {
       "datasource": {
-        "type": "postgres",
-        "uid": "lJMKSZxHk"
+        "type": "datasource",
+        "uid": "-- Mixed --"
       },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "axisSoftMin": 0,
-            "barAlignment": 0,
             "drawStyle": "bars",
             "fillOpacity": 20,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "stepBefore",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "normal"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "decimals": 0,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
+            "lineInterpolation": "stepBefore"
           },
           "unit": "none"
-        },
-        "overrides": []
+        }
       },
       "gridPos": {
         "h": 13,
         "w": 24,
-        "x": 0,
         "y": 13
       },
       "id": 2,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "pluginVersion": "9.2.10",
+      "pluginVersion": "v11.4.0",
       "targets": [
         {
           "datasource": {
             "type": "postgres",
-            "uid": "lJMKSZxHk"
+            "uid": "${datasource}"
           },
           "format": "time_series",
-          "group": [],
-          "metricColumn": "none",
-          "rawQuery": true,
-          "rawSql": "SELECT\n    $__timeGroupAlias(start, '1h'),\n    COALESCE(\n        CASE\n            WHEN label_values ? '__results_errors_error_reasons_simple' AND label_values->>'__results_errors_error_reasons_simple' = '' THEN\n                'no error detected'\n            WHEN label_values ? '__results_errors_error_reasons_simple' THEN\n                regexp_replace(label_values->>'__results_errors_error_reasons_simple', '[0-9]+\\s?x ', '', 'g')\n            ELSE\n                NULL\n        END,\n        NULL) AS \"metric\",\n    COUNT(*) AS \"count\"\nFROM\n    data\nWHERE\n    horreum_testid = 372\n    AND label_values ? '__results_errors_error_reasons_simple'\n    AND label_values->>'__results_errors_error_reasons_simple' != ''\n    AND $__timeFilter(start)\nGROUP BY 1,2\nORDER BY 1;",
-          "refId": "A",
-          "select": [
-            [
-              {
-                "params": [
-                  "value"
-                ],
-                "type": "column"
-              }
-            ]
-          ],
-          "timeColumn": "time",
-          "where": [
-            {
-              "name": "$__timeFilter",
-              "params": [],
-              "type": "macro"
-            }
-          ]
+          "rawSql": "SELECT\n    $__timeGroupAlias(start, '1h'),\n    COALESCE(\n        CASE\n            WHEN label_values ? '__results_errors_error_reasons_simple' AND label_values->>'__results_errors_error_reasons_simple' = '' THEN\n                'no error detected'\n            WHEN label_values ? '__results_errors_error_reasons_simple' THEN\n                regexp_replace(label_values->>'__results_errors_error_reasons_simple', '[0-9]+\\\\s?x ', '', 'g')\n            ELSE\n                NULL\n        END,\n        NULL) AS \"metric\",\n    COUNT(*) AS \"count\"\nFROM\n    data\nWHERE\n    horreum_testid = 372\n    AND label_values ? '__results_errors_error_reasons_simple'\n    AND label_values->>'__results_errors_error_reasons_simple' != ''\n    AND $__timeFilter(start)\nGROUP BY 1,2\nORDER BY 1;\n"
         }
       ],
       "title": "Errors by reason grand total",
@@ -291,272 +78,87 @@
     },
     {
       "datasource": {
-        "type": "postgres",
-        "uid": "lJMKSZxHk"
+        "type": "datasource",
+        "uid": "-- Mixed --"
       },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "axisSoftMin": 0,
-            "barAlignment": 0,
             "drawStyle": "bars",
             "fillOpacity": 20,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "stepBefore",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "normal"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "decimals": 0,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
+            "lineInterpolation": "stepBefore"
           },
           "unit": "none"
-        },
-        "overrides": []
+        }
       },
       "gridPos": {
         "h": 13,
         "w": 24,
-        "x": 0,
         "y": 26
       },
-      "id": 55,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "pluginVersion": "9.2.10",
+      "id": 3,
+      "pluginVersion": "v11.4.0",
       "targets": [
         {
           "datasource": {
             "type": "postgres",
-            "uid": "lJMKSZxHk"
+            "uid": "${datasource}"
           },
           "format": "time_series",
-          "group": [],
-          "metricColumn": "none",
-          "rawQuery": true,
-          "rawSql": "SELECT\n    $__timeGroupAlias(start, '1h'),\n    COALESCE(\n        CASE\n            WHEN label_values ? '__results_errors_error_caused_by_simple' AND label_values->>'__results_errors_error_caused_by_simple' = '' THEN\n                'no error detected'\n            WHEN label_values ? '__results_errors_error_caused_by_simple' THEN\n                label_values->>'__results_errors_error_caused_by_simple'\n            ELSE\n                NULL\n        END,\n        NULL) AS \"metric\",\n    COUNT(*) AS \"count\"\n\nFROM\n    data\nWHERE\n    horreum_testid = 372\n    AND label_values ? '__results_errors_error_caused_by_simple'\n    AND label_values->>'__results_errors_error_caused_by_simple' != ''\n    AND $__timeFilter(start)\nGROUP BY 1,2\nORDER BY 1;",
-          "refId": "A",
-          "select": [
-            [
-              {
-                "params": [
-                  "value"
-                ],
-                "type": "column"
-              }
-            ]
-          ],
-          "timeColumn": "time",
-          "where": [
-            {
-              "name": "$__timeFilter",
-              "params": [],
-              "type": "macro"
-            }
-          ]
+          "rawSql": "SELECT\n    $__timeGroupAlias(start, '1h'),\n    COALESCE(\n        CASE\n            WHEN label_values ? '__results_errors_error_caused_by_simple' AND label_values->>'__results_errors_error_caused_by_simple' = '' THEN\n                'no error detected'\n            WHEN label_values ? '__results_errors_error_caused_by_simple' THEN\n                label_values->>'__results_errors_error_caused_by_simple'\n            ELSE\n                NULL\n        END,\n        NULL) AS \"metric\",\n    COUNT(*) AS \"count\"\nFROM\n    data\nWHERE\n    horreum_testid = 372\n    AND label_values ? '__results_errors_error_caused_by_simple'\n    AND label_values->>'__results_errors_error_caused_by_simple' != ''\n    AND $__timeFilter(start)\nGROUP BY 1,2\nORDER BY 1;\n"
         }
       ],
       "title": "Errors by cause grand total",
       "type": "timeseries"
     },
     {
-      "collapsed": true,
+      "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
         "y": 39
       },
-      "id": 54,
+      "id": 4,
       "panels": [
         {
           "datasource": {
-            "type": "postgres",
-            "uid": "lJMKSZxHk"
+            "type": "datasource",
+            "uid": "-- Mixed --"
           },
           "fieldConfig": {
             "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "axisSoftMin": 0,
-                "barAlignment": 0,
-                "drawStyle": "line",
-                "fillOpacity": 20,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
                 "lineInterpolation": "smooth",
-                "lineWidth": 1,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
                 "showPoints": "always",
-                "spanNulls": 3600000,
-                "stacking": {
-                  "group": "A",
-                  "mode": "normal"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "decimals": 0,
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green"
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
+                "spanNulls": 3600000
               },
               "unit": "none"
-            },
-            "overrides": []
+            }
           },
           "gridPos": {
             "h": 9,
-            "w": 6,
-            "x": 0,
-            "y": 40
+            "w": 6
           },
-          "id": 4,
-          "maxPerRow": 4,
-          "options": {
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "pluginVersion": "9.2.10",
+          "id": 5,
+          "pluginVersion": "v11.4.0",
           "repeat": "member_cluster",
-          "repeatDirection": "h",
           "targets": [
             {
               "datasource": {
                 "type": "postgres",
-                "uid": "lJMKSZxHk"
+                "uid": "${datasource}"
               },
               "format": "time_series",
-              "group": [],
-              "metricColumn": "none",
-              "rawQuery": true,
-              "rawSql": "SELECT\n    $__timeGroupAlias(start, '1h'),\n    COUNT(*) AS \"passes\"\nFROM\n    data\nWHERE\n    horreum_testid = 372\n    AND label_values->>'.metadata.env.MEMBER_CLUSTER' = ${member_cluster}\n    AND $__timeFilter(start)\n    AND label_values->>'.results.measurements.KPI.mean' != '-1'\nGROUP BY 1\nORDER BY 1;",
-              "refId": "A",
-              "select": [
-                [
-                  {
-                    "params": [
-                      "value"
-                    ],
-                    "type": "column"
-                  }
-                ]
-              ],
-              "timeColumn": "time",
-              "where": [
-                {
-                  "name": "$__timeFilter",
-                  "params": [],
-                  "type": "macro"
-                }
-              ]
+              "rawSql": "SELECT\n    $__timeGroupAlias(start, '1h'),\n    COUNT(*) AS \"passes\"\nFROM\n    data\nWHERE\n    horreum_testid = 372\n    AND rtrim(label_values->>'.metadata.env.MEMBER_CLUSTER', '/') = rtrim(${member_cluster}, '/')\n    AND $__timeFilter(start)\n    AND label_values->>'.results.measurements.KPI.mean' != '-1'\nGROUP BY 1\nORDER BY 1;\n"
             },
             {
               "datasource": {
                 "type": "postgres",
-                "uid": "lJMKSZxHk"
+                "uid": "${datasource}"
               },
               "format": "time_series",
-              "group": [],
-              "hide": false,
-              "metricColumn": "none",
-              "rawQuery": true,
-              "rawSql": "SELECT\n    $__timeGroupAlias(start, '1h'),\n    COUNT(*) AS \"failures\"\nFROM\n    data\nWHERE\n    horreum_testid = 372\n    AND label_values->>'.metadata.env.MEMBER_CLUSTER' = ${member_cluster}\n    AND $__timeFilter(start)\n    AND label_values->>'.results.measurements.KPI.mean' = '-1'\nGROUP BY 1\nORDER BY 1;",
-              "refId": "B",
-              "select": [
-                [
-                  {
-                    "params": [
-                      "value"
-                    ],
-                    "type": "column"
-                  }
-                ]
-              ],
-              "timeColumn": "time",
-              "where": [
-                {
-                  "name": "$__timeFilter",
-                  "params": [],
-                  "type": "macro"
-                }
-              ]
+              "rawSql": "SELECT\n    $__timeGroupAlias(start, '1h'),\n    COUNT(*) AS \"failures\"\nFROM\n    data\nWHERE\n    horreum_testid = 372\n    AND rtrim(label_values->>'.metadata.env.MEMBER_CLUSTER', '/') = rtrim(${member_cluster}, '/')\n    AND $__timeFilter(start)\n    AND label_values->>'.results.measurements.KPI.mean' = '-1'\nGROUP BY 1\nORDER BY 1;\n"
             }
           ],
           "title": "Runs count for ${member_cluster}",
@@ -567,125 +169,45 @@
       "type": "row"
     },
     {
-      "collapsed": true,
+      "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
         "y": 40
       },
-      "id": 34,
+      "id": 6,
       "panels": [
         {
           "datasource": {
-            "type": "postgres",
-            "uid": "lJMKSZxHk"
+            "type": "datasource",
+            "uid": "-- Mixed --"
           },
           "fieldConfig": {
             "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
                 "drawStyle": "bars",
                 "fillOpacity": 20,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "lineInterpolation": "stepBefore",
-                "lineWidth": 1,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "auto",
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "normal"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "decimals": 0,
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green"
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
+                "lineInterpolation": "stepBefore"
               },
               "unit": "none"
-            },
-            "overrides": []
+            }
           },
           "gridPos": {
             "h": 9,
-            "w": 6,
-            "x": 0,
-            "y": 28
+            "w": 6
           },
-          "id": 14,
-          "options": {
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "pluginVersion": "9.2.10",
+          "id": 7,
+          "pluginVersion": "v11.4.0",
           "repeat": "member_cluster",
-          "repeatDirection": "h",
           "targets": [
             {
               "datasource": {
                 "type": "postgres",
-                "uid": "lJMKSZxHk"
+                "uid": "${datasource}"
               },
               "format": "time_series",
-              "group": [],
-              "metricColumn": "none",
-              "rawQuery": true,
-              "rawSql": "SELECT\n    $__timeGroupAlias(start, '1h'),\n    COALESCE(\n        CASE\n            WHEN label_values ? '__results_errors_error_reasons_simple' AND label_values->>'__results_errors_error_reasons_simple' = '' THEN\n                'no error detected'\n            WHEN label_values ? '__results_errors_error_reasons_simple' THEN\n                regexp_replace(label_values->>'__results_errors_error_reasons_simple', '[0-9]+\\s?x ', '', 'g')\n            ELSE\n                NULL\n        END,\n        NULL) AS \"metric\",\n    COUNT(*) AS \"count\"\nFROM\n    data\nWHERE\n    horreum_testid = 372\n    AND label_values->>'.metadata.env.MEMBER_CLUSTER' = ${member_cluster}\n    AND label_values ? '__results_errors_error_reasons_simple'\n    AND label_values->>'__results_errors_error_reasons_simple' != ''\n    AND $__timeFilter(start)\nGROUP BY 1,2\nORDER BY 1;",
-              "refId": "A",
-              "select": [
-                [
-                  {
-                    "params": [
-                      "value"
-                    ],
-                    "type": "column"
-                  }
-                ]
-              ],
-              "timeColumn": "time",
-              "where": [
-                {
-                  "name": "$__timeFilter",
-                  "params": [],
-                  "type": "macro"
-                }
-              ]
+              "rawSql": "SELECT\n    $__timeGroupAlias(start, '1h'),\n    COALESCE(\n        CASE\n            WHEN label_values ? '__results_errors_error_reasons_simple' AND label_values->>'__results_errors_error_reasons_simple' = '' THEN\n                'no error detected'\n            WHEN label_values ? '__results_errors_error_reasons_simple' THEN\n                regexp_replace(label_values->>'__results_errors_error_reasons_simple', '[0-9]+\\\\s?x ', '', 'g')\n            ELSE\n                NULL\n        END,\n        NULL) AS \"metric\",\n    COUNT(*) AS \"count\"\nFROM\n    data\nWHERE\n    horreum_testid = 372\n    AND rtrim(label_values->>'.metadata.env.MEMBER_CLUSTER', '/') = rtrim(${member_cluster}, '/')\n    AND label_values ? '__results_errors_error_reasons_simple'\n    AND label_values->>'__results_errors_error_reasons_simple' != ''\n    AND $__timeFilter(start)\nGROUP BY 1,2\nORDER BY 1;\n"
             }
           ],
           "title": "Errors by reason for ${member_cluster}",
@@ -696,100 +218,90 @@
       "type": "row"
     }
   ],
-  "schemaVersion": 37,
-  "style": "dark",
-  "tags": [],
+  "schemaVersion": 39,
   "templating": {
     "list": [
       {
         "current": {
-          "selected": true,
+          "selected": false,
+          "text": "grafana-postgresql-datasource",
+          "value": "grafana-postgresql-datasource"
+        },
+        "description": "Description",
+        "label": "Datasource",
+        "name": "datasource",
+        "query": "postgres",
+        "regex": ".*grafana-postgresql-datasource.*",
+        "type": "datasource"
+      },
+      {
+        "current": {
+          "selected": false,
           "text": [
-            "https://api.kfluxfedorap01.toli.p1.openshiftapps.com:6443/",
-            "https://api.kflux-ocp-p01.7ayg.p1.openshiftapps.com:6443/",
-            "https://api.kflux-prd-rh02.0fk9.p1.openshiftapps.com:6443/",
-            "https://api.kflux-prd-rh03.nnv1.p1.openshiftapps.com:6443/",
-            "https://api.kflux-rhel-p01.fc38.p1.openshiftapps.com:6443/",
-            "https://api.stone-prd-rh01.pg1f.p1.openshiftapps.com:6443/",
-            "https://api.stone-prod-p01.wcfb.p1.openshiftapps.com:6443/",
-            "https://api.stone-prod-p02.hjvn.p1.openshiftapps.com:6443/",
-            "https://api.stone-stage-p01.hpmt.p1.openshiftapps.com:6443/",
-            "https://api.stone-stg-rh01.l2vh.p1.openshiftapps.com:6443/"
+            "all"
           ],
           "value": [
-            "https://api.kfluxfedorap01.toli.p1.openshiftapps.com:6443/",
-            "https://api.kflux-ocp-p01.7ayg.p1.openshiftapps.com:6443/",
-            "https://api.kflux-prd-rh02.0fk9.p1.openshiftapps.com:6443/",
-            "https://api.kflux-prd-rh03.nnv1.p1.openshiftapps.com:6443/",
-            "https://api.kflux-rhel-p01.fc38.p1.openshiftapps.com:6443/",
-            "https://api.stone-prd-rh01.pg1f.p1.openshiftapps.com:6443/",
-            "https://api.stone-prod-p01.wcfb.p1.openshiftapps.com:6443/",
-            "https://api.stone-prod-p02.hjvn.p1.openshiftapps.com:6443/",
-            "https://api.stone-stage-p01.hpmt.p1.openshiftapps.com:6443/",
-            "https://api.stone-stg-rh01.l2vh.p1.openshiftapps.com:6443/"
+            "all"
           ]
         },
         "description": "Description",
-        "hide": 0,
-        "includeAll": false,
+        "includeAll": true,
         "label": "Member cluster",
         "multi": true,
         "name": "member_cluster",
         "options": [
           {
             "selected": true,
-            "text": "https://api.kfluxfedorap01.toli.p1.openshiftapps.com:6443/",
-            "value": "https://api.kfluxfedorap01.toli.p1.openshiftapps.com:6443/"
+            "text": "https://api.kfluxfedorap01.toli.p1.openshiftapps.com:6443",
+            "value": "https://api.kfluxfedorap01.toli.p1.openshiftapps.com:6443"
           },
           {
-            "selected": true,
-            "text": "https://api.kflux-ocp-p01.7ayg.p1.openshiftapps.com:6443/",
-            "value": "https://api.kflux-ocp-p01.7ayg.p1.openshiftapps.com:6443/"
+            "selected": false,
+            "text": "https://api.kflux-ocp-p01.7ayg.p1.openshiftapps.com:6443",
+            "value": "https://api.kflux-ocp-p01.7ayg.p1.openshiftapps.com:6443"
           },
           {
-            "selected": true,
-            "text": "https://api.kflux-prd-rh02.0fk9.p1.openshiftapps.com:6443/",
-            "value": "https://api.kflux-prd-rh02.0fk9.p1.openshiftapps.com:6443/"
+            "selected": false,
+            "text": "https://api.kflux-prd-rh02.0fk9.p1.openshiftapps.com:6443",
+            "value": "https://api.kflux-prd-rh02.0fk9.p1.openshiftapps.com:6443"
           },
           {
-            "selected": true,
-            "text": "https://api.kflux-prd-rh03.nnv1.p1.openshiftapps.com:6443/",
-            "value": "https://api.kflux-prd-rh03.nnv1.p1.openshiftapps.com:6443/"
+            "selected": false,
+            "text": "https://api.kflux-prd-rh03.nnv1.p1.openshiftapps.com:6443",
+            "value": "https://api.kflux-prd-rh03.nnv1.p1.openshiftapps.com:6443"
           },
           {
-            "selected": true,
-            "text": "https://api.kflux-rhel-p01.fc38.p1.openshiftapps.com:6443/",
-            "value": "https://api.kflux-rhel-p01.fc38.p1.openshiftapps.com:6443/"
+            "selected": false,
+            "text": "https://api.kflux-rhel-p01.fc38.p1.openshiftapps.com:6443",
+            "value": "https://api.kflux-rhel-p01.fc38.p1.openshiftapps.com:6443"
           },
           {
-            "selected": true,
-            "text": "https://api.stone-prd-rh01.pg1f.p1.openshiftapps.com:6443/",
-            "value": "https://api.stone-prd-rh01.pg1f.p1.openshiftapps.com:6443/"
+            "selected": false,
+            "text": "https://api.stone-prd-rh01.pg1f.p1.openshiftapps.com:6443",
+            "value": "https://api.stone-prd-rh01.pg1f.p1.openshiftapps.com:6443"
           },
           {
-            "selected": true,
-            "text": "https://api.stone-prod-p01.wcfb.p1.openshiftapps.com:6443/",
-            "value": "https://api.stone-prod-p01.wcfb.p1.openshiftapps.com:6443/"
+            "selected": false,
+            "text": "https://api.stone-prod-p01.wcfb.p1.openshiftapps.com:6443",
+            "value": "https://api.stone-prod-p01.wcfb.p1.openshiftapps.com:6443"
           },
           {
-            "selected": true,
-            "text": "https://api.stone-prod-p02.hjvn.p1.openshiftapps.com:6443/",
-            "value": "https://api.stone-prod-p02.hjvn.p1.openshiftapps.com:6443/"
+            "selected": false,
+            "text": "https://api.stone-prod-p02.hjvn.p1.openshiftapps.com:6443",
+            "value": "https://api.stone-prod-p02.hjvn.p1.openshiftapps.com:6443"
           },
           {
-            "selected": true,
-            "text": "https://api.stone-stage-p01.hpmt.p1.openshiftapps.com:6443/",
-            "value": "https://api.stone-stage-p01.hpmt.p1.openshiftapps.com:6443/"
+            "selected": false,
+            "text": "https://api.stone-stage-p01.hpmt.p1.openshiftapps.com:6443",
+            "value": "https://api.stone-stage-p01.hpmt.p1.openshiftapps.com:6443"
           },
           {
-            "selected": true,
-            "text": "https://api.stone-stg-rh01.l2vh.p1.openshiftapps.com:6443/",
-            "value": "https://api.stone-stg-rh01.l2vh.p1.openshiftapps.com:6443/"
+            "selected": false,
+            "text": "https://api.stone-stg-rh01.l2vh.p1.openshiftapps.com:6443",
+            "value": "https://api.stone-stg-rh01.l2vh.p1.openshiftapps.com:6443"
           }
         ],
-        "query": "https://api.kfluxfedorap01.toli.p1.openshiftapps.com:6443/ : https://api.kfluxfedorap01.toli.p1.openshiftapps.com:6443/,https://api.kflux-ocp-p01.7ayg.p1.openshiftapps.com:6443/ : https://api.kflux-ocp-p01.7ayg.p1.openshiftapps.com:6443/,https://api.kflux-prd-rh02.0fk9.p1.openshiftapps.com:6443/ : https://api.kflux-prd-rh02.0fk9.p1.openshiftapps.com:6443/,https://api.kflux-prd-rh03.nnv1.p1.openshiftapps.com:6443/ : https://api.kflux-prd-rh03.nnv1.p1.openshiftapps.com:6443/,https://api.kflux-rhel-p01.fc38.p1.openshiftapps.com:6443/ : https://api.kflux-rhel-p01.fc38.p1.openshiftapps.com:6443/,https://api.stone-prd-rh01.pg1f.p1.openshiftapps.com:6443/ : https://api.stone-prd-rh01.pg1f.p1.openshiftapps.com:6443/,https://api.stone-prod-p01.wcfb.p1.openshiftapps.com:6443/ : https://api.stone-prod-p01.wcfb.p1.openshiftapps.com:6443/,https://api.stone-prod-p02.hjvn.p1.openshiftapps.com:6443/ : https://api.stone-prod-p02.hjvn.p1.openshiftapps.com:6443/,https://api.stone-stage-p01.hpmt.p1.openshiftapps.com:6443/ : https://api.stone-stage-p01.hpmt.p1.openshiftapps.com:6443/,https://api.stone-stg-rh01.l2vh.p1.openshiftapps.com:6443/ : https://api.stone-stg-rh01.l2vh.p1.openshiftapps.com:6443/",
-        "queryValue": "",
-        "skipUrlSync": false,
+        "query": "https://api.kfluxfedorap01.toli.p1.openshiftapps.com:6443 : https://api.kfluxfedorap01.toli.p1.openshiftapps.com:6443,https://api.kflux-ocp-p01.7ayg.p1.openshiftapps.com:6443 : https://api.kflux-ocp-p01.7ayg.p1.openshiftapps.com:6443,https://api.kflux-prd-rh02.0fk9.p1.openshiftapps.com:6443 : https://api.kflux-prd-rh02.0fk9.p1.openshiftapps.com:6443,https://api.kflux-prd-rh03.nnv1.p1.openshiftapps.com:6443 : https://api.kflux-prd-rh03.nnv1.p1.openshiftapps.com:6443,https://api.kflux-rhel-p01.fc38.p1.openshiftapps.com:6443 : https://api.kflux-rhel-p01.fc38.p1.openshiftapps.com:6443,https://api.stone-prd-rh01.pg1f.p1.openshiftapps.com:6443 : https://api.stone-prd-rh01.pg1f.p1.openshiftapps.com:6443,https://api.stone-prod-p01.wcfb.p1.openshiftapps.com:6443 : https://api.stone-prod-p01.wcfb.p1.openshiftapps.com:6443,https://api.stone-prod-p02.hjvn.p1.openshiftapps.com:6443 : https://api.stone-prod-p02.hjvn.p1.openshiftapps.com:6443,https://api.stone-stage-p01.hpmt.p1.openshiftapps.com:6443 : https://api.stone-stage-p01.hpmt.p1.openshiftapps.com:6443,https://api.stone-stg-rh01.l2vh.p1.openshiftapps.com:6443 : https://api.stone-stg-rh01.l2vh.p1.openshiftapps.com:6443",
         "type": "custom"
       }
     ]
@@ -798,10 +310,7 @@
     "from": "now-24h",
     "to": "now"
   },
-  "timepicker": {},
-  "timezone": "",
+  "timezone": "utc",
   "title": "Trending errors",
-  "uid": "8nNUfXVDz",
-  "version": 15,
-  "weekStart": ""
+  "uid": "Trending_errors"
 }
