@@ -232,6 +232,8 @@ dashboard.new('Trending errors')
     + timeSeries.fieldConfig.defaults.custom.withLineInterpolation('smooth')
     + timeSeries.fieldConfig.defaults.custom.withShowPoints('always')
     + timeSeries.fieldConfig.defaults.custom.withSpanNulls(3600000)
+    + timeSeries.fieldConfig.defaults.custom.withFillOpacity(20)
+    + timeSeries.fieldConfig.defaults.custom.stacking.withMode('normal')
     + timeSeries.standardOptions.withUnit('none')
     + timeSeries.standardOptions.withMin(0)
     + timeSeries.standardOptions.withDecimals(0),

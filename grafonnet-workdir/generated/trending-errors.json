@@ -145,9 +145,13 @@
           "fieldConfig": {
             "defaults": {
               "custom": {
+                "fillOpacity": 20,
                 "lineInterpolation": "smooth",
                 "showPoints": "always",
-                "spanNulls": 3600000
+                "spanNulls": 3600000,
+                "stacking": {
+                  "mode": "normal"
+                }
               },
               "decimals": 0,
               "min": 0,
