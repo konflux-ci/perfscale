@@ -3,8 +3,8 @@
   "panels": [
     {
       "datasource": {
-        "type": "datasource",
-        "uid": "-- Mixed --"
+        "type": "postgres",
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -49,8 +49,8 @@
     },
     {
       "datasource": {
-        "type": "datasource",
-        "uid": "-- Mixed --"
+        "type": "postgres",
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -81,7 +81,7 @@
             "uid": "${datasource}"
           },
           "format": "time_series",
-          "rawSql": "SELECT\n    $__timeGroupAlias(start, '1h'),\n    COALESCE(\n        CASE\n            WHEN label_values ? '__results_errors_error_reasons_simple' AND label_values->>'__results_errors_error_reasons_simple' = '' THEN\n                'no error detected'\n            WHEN label_values ? '__results_errors_error_reasons_simple' THEN\n                regexp_replace(label_values->>'__results_errors_error_reasons_simple', '[0-9]+\\s?x ', '', 'g')\n            ELSE\n                NULL\n        END,\n        NULL) AS \"metric\",\n    COUNT(*) AS \"count\"\nFROM\n    data\nWHERE\n    horreum_testid = 372\n    AND label_values ? '__results_errors_error_reasons_simple'\n    AND label_values->>'__results_errors_error_reasons_simple' != ''\n    AND $__timeFilter(start)\nGROUP BY 1,2\nORDER BY 1;\n"
+          "rawSql": "SELECT\n    $__timeGroupAlias(start, '1h'),\n    COALESCE(\n        CASE\n            WHEN label_values ? '__results_errors_error_reasons_simple' AND label_values->>'__results_errors_error_reasons_simple' = '' THEN\n                'no error detected'\n            WHEN label_values ? '__results_errors_error_reasons_simple' THEN\n                regexp_replace(label_values->>'__results_errors_error_reasons_simple', '[0-9]+[[:space:]]?x ', '', 'g')\n            ELSE\n                NULL\n        END,\n        NULL) AS \"metric\",\n    COUNT(*) AS \"count\"\nFROM\n    data\nWHERE\n    horreum_testid = 372\n    AND label_values ? '__results_errors_error_reasons_simple'\n    AND label_values->>'__results_errors_error_reasons_simple' != ''\n    AND $__timeFilter(start)\nGROUP BY 1,2\nORDER BY 1;\n"
         }
       ],
       "title": "Errors by reason grand total",
@@ -89,8 +89,8 @@
     },
     {
       "datasource": {
-        "type": "datasource",
-        "uid": "-- Mixed --"
+        "type": "postgres",
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -128,7 +128,7 @@
       "type": "timeseries"
     },
     {
-      "collapsed": false,
+      "collapsed": true,
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -139,8 +139,8 @@
       "panels": [
         {
           "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "postgres",
+            "uid": "${datasource}"
           },
           "fieldConfig": {
             "defaults": {
@@ -149,6 +149,8 @@
                 "showPoints": "always",
                 "spanNulls": 3600000
               },
+              "decimals": 0,
+              "min": 0,
               "unit": "none"
             }
           },
@@ -185,7 +187,7 @@
       "type": "row"
     },
     {
-      "collapsed": false,
+      "collapsed": true,
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -196,8 +198,8 @@
       "panels": [
         {
           "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "postgres",
+            "uid": "${datasource}"
           },
           "fieldConfig": {
             "defaults": {
@@ -206,6 +208,8 @@
                 "fillOpacity": 20,
                 "lineInterpolation": "stepBefore"
               },
+              "decimals": 0,
+              "min": 0,
               "unit": "none"
             }
           },
@@ -223,7 +227,7 @@
                 "uid": "${datasource}"
               },
               "format": "time_series",
-              "rawSql": "SELECT\n    $__timeGroupAlias(start, '1h'),\n    COALESCE(\n        CASE\n            WHEN label_values ? '__results_errors_error_reasons_simple' AND label_values->>'__results_errors_error_reasons_simple' = '' THEN\n                'no error detected'\n            WHEN label_values ? '__results_errors_error_reasons_simple' THEN\n                regexp_replace(label_values->>'__results_errors_error_reasons_simple', '[0-9]+\\s?x ', '', 'g')\n            ELSE\n                NULL\n        END,\n        NULL) AS \"metric\",\n    COUNT(*) AS \"count\"\nFROM\n    data\nWHERE\n    horreum_testid = 372\n    AND rtrim(label_values->>'.metadata.env.MEMBER_CLUSTER', '/') = rtrim(${member_cluster}, '/')\n    AND label_values ? '__results_errors_error_reasons_simple'\n    AND label_values->>'__results_errors_error_reasons_simple' != ''\n    AND $__timeFilter(start)\nGROUP BY 1,2\nORDER BY 1;\n"
+              "rawSql": "SELECT\n    $__timeGroupAlias(start, '1h'),\n    COALESCE(\n        CASE\n            WHEN label_values ? '__results_errors_error_reasons_simple' AND label_values->>'__results_errors_error_reasons_simple' = '' THEN\n                'no error detected'\n            WHEN label_values ? '__results_errors_error_reasons_simple' THEN\n                regexp_replace(label_values->>'__results_errors_error_reasons_simple', '[0-9]+[[:space:]]?x ', '', 'g')\n            ELSE\n                NULL\n        END,\n        NULL) AS \"metric\",\n    COUNT(*) AS \"count\"\nFROM\n    data\nWHERE\n    horreum_testid = 372\n    AND rtrim(label_values->>'.metadata.env.MEMBER_CLUSTER', '/') = rtrim(${member_cluster}, '/')\n    AND label_values ? '__results_errors_error_reasons_simple'\n    AND label_values->>'__results_errors_error_reasons_simple' != ''\n    AND $__timeFilter(start)\nGROUP BY 1,2\nORDER BY 1;\n"
             }
           ],
           "title": "Errors by reason for ${member_cluster}",

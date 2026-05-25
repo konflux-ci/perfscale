@@ -67,7 +67,7 @@ local grandTotalErrorsByReasonQuery(testId) = [
                 WHEN label_values ? '__results_errors_error_reasons_simple' AND label_values->>'__results_errors_error_reasons_simple' = '' THEN
                     'no error detected'
                 WHEN label_values ? '__results_errors_error_reasons_simple' THEN
-                    regexp_replace(label_values->>'__results_errors_error_reasons_simple', '[0-9]+\s?x ', '', 'g')
+                    regexp_replace(label_values->>'__results_errors_error_reasons_simple', '[0-9]+[[:space:]]?x ', '', 'g')
                 ELSE
                     NULL
             END,
@@ -152,7 +152,7 @@ local perClusterErrorsByReasonQuery(testId) = [
                 WHEN label_values ? '__results_errors_error_reasons_simple' AND label_values->>'__results_errors_error_reasons_simple' = '' THEN
                     'no error detected'
                 WHEN label_values ? '__results_errors_error_reasons_simple' THEN
-                    regexp_replace(label_values->>'__results_errors_error_reasons_simple', '[0-9]+\s?x ', '', 'g')
+                    regexp_replace(label_values->>'__results_errors_error_reasons_simple', '[0-9]+[[:space:]]?x ', '', 'g')
                 ELSE
                     NULL
             END,
@@ -181,6 +181,7 @@ dashboard.new('Trending errors')
 ])
 + dashboard.withPanels([
   timeSeries.new('Runs count grand total')
+  + timeSeries.queryOptions.withDatasource(type='postgres', uid='${datasource}')
   + timeSeries.queryOptions.withTargets(grandTotalRunsQuery(testId))
   + timeSeries.gridPos.withH(13)
   + timeSeries.gridPos.withW(24)
@@ -192,6 +193,7 @@ dashboard.new('Trending errors')
   + timeSeries.standardOptions.withDecimals(0),
 
   timeSeries.new('Errors by reason grand total')
+  + timeSeries.queryOptions.withDatasource(type='postgres', uid='${datasource}')
   + timeSeries.queryOptions.withTargets(grandTotalErrorsByReasonQuery(testId))
   + timeSeries.gridPos.withH(13)
   + timeSeries.gridPos.withW(24)
@@ -205,6 +207,7 @@ dashboard.new('Trending errors')
   + timeSeries.standardOptions.withDecimals(0),
 
   timeSeries.new('Errors by cause grand total')
+  + timeSeries.queryOptions.withDatasource(type='postgres', uid='${datasource}')
   + timeSeries.queryOptions.withTargets(grandTotalErrorsByCauseQuery(testId))
   + timeSeries.gridPos.withH(13)
   + timeSeries.gridPos.withW(24)
@@ -218,8 +221,10 @@ dashboard.new('Trending errors')
   + timeSeries.standardOptions.withDecimals(0),
 
   row.new('Runs count per cluster')
+  + row.withCollapsed(true)
   + row.withPanels([
     timeSeries.new('Runs count for ${member_cluster}')
+    + timeSeries.queryOptions.withDatasource(type='postgres', uid='${datasource}')
     + timeSeries.queryOptions.withTargets(perClusterRunsQuery(testId))
     + timeSeries.panelOptions.withRepeat('member_cluster')
     + timeSeries.gridPos.withH(9)
@@ -227,13 +232,17 @@ dashboard.new('Trending errors')
     + timeSeries.fieldConfig.defaults.custom.withLineInterpolation('smooth')
     + timeSeries.fieldConfig.defaults.custom.withShowPoints('always')
     + timeSeries.fieldConfig.defaults.custom.withSpanNulls(3600000)
-    + timeSeries.standardOptions.withUnit('none'),
+    + timeSeries.standardOptions.withUnit('none')
+    + timeSeries.standardOptions.withMin(0)
+    + timeSeries.standardOptions.withDecimals(0),
   ])
   + row.gridPos.withY(39),
 
   row.new('Errors by reason per cluster')
+  + row.withCollapsed(true)
   + row.withPanels([
     timeSeries.new('Errors by reason for ${member_cluster}')
+    + timeSeries.queryOptions.withDatasource(type='postgres', uid='${datasource}')
     + timeSeries.queryOptions.withTargets(perClusterErrorsByReasonQuery(testId))
     + timeSeries.panelOptions.withRepeat('member_cluster')
     + timeSeries.gridPos.withH(9)
@@ -241,7 +250,9 @@ dashboard.new('Trending errors')
     + timeSeries.fieldConfig.defaults.custom.withDrawStyle('bars')
     + timeSeries.fieldConfig.defaults.custom.withLineInterpolation('stepBefore')
     + timeSeries.fieldConfig.defaults.custom.withFillOpacity(20)
-    + timeSeries.standardOptions.withUnit('none'),
+    + timeSeries.standardOptions.withUnit('none')
+    + timeSeries.standardOptions.withMin(0)
+    + timeSeries.standardOptions.withDecimals(0),
   ])
   + row.gridPos.withY(40),
 ])
