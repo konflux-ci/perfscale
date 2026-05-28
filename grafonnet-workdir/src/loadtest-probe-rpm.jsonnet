@@ -2,10 +2,10 @@ local probes = import 'probes.libsonnet';
 
 // Define dashboard variables
 local memberClusters = [
-  'https://api.kflux-fedora-01.84db.p1.openshiftapps.com:6443/',
+  'https://api.stone-prod-p02.hjvn.p1.openshiftapps.com:6443/',
   'https://api.stone-prd-rh01.pg1f.p1.openshiftapps.com:6443/',
   'https://api.kflux-rhel-p01.fc38.p1.openshiftapps.com:6443/',
-  'https://api.kfluxfedorap01.toli.p1.openshiftapps.com:6443/',
+  'https://api.kflux-fedora-01.84db.p1.openshiftapps.com:6443/',
 ];
 local testPhaseStubs = [
   '__results_measurements_HandleUser_',
