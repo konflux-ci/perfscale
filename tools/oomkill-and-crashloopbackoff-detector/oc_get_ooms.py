@@ -1107,6 +1107,26 @@ def save_pod_artifacts(
     return str(desc_path.resolve()), str(log_path.resolve())
 
 
+def is_artifact_meaningful(content: str) -> bool:
+    """
+    Check if artifact content is meaningful (not just 'pod not found' errors).
+
+    Returns:
+        True if content has useful information, False if pod was deleted/not found
+    """
+    if not content or not content.strip():
+        return False
+
+    lower = content.lower()
+    # Check for "pod not found" or "notfound" errors from server
+    if "not found" in lower and "error from server" in lower:
+        return False
+    if "notfound" in lower and "pods" in lower:
+        return False
+
+    return True
+
+
 # ---------------------------
 # namespace worker (oc-only)
 # ---------------------------
@@ -1318,25 +1338,36 @@ def query_context(
                     if res:
                         # Save artifacts for each pod found in this namespace
                         out_ns_with_artifacts: Dict[str, Dict[str, Any]] = {}
+                        skipped = 0
                         for p, info in res.items():
                             if artifacts_root is not None:
                                 desc_file, log_file = save_pod_artifacts(
                                     context, cluster, ns, p, retries, oc_timeout_seconds,
                                     artifacts_root=artifacts_root,
                                 )
+                                # Validate artifacts - skip if pod was deleted/not found
+                                try:
+                                    desc_content = Path(desc_file).read_text()
+                                    log_content = Path(log_file).read_text()
+                                    if not is_artifact_meaningful(desc_content) or not is_artifact_meaningful(log_content):
+                                        Path(desc_file).unlink(missing_ok=True)
+                                        Path(log_file).unlink(missing_ok=True)
+                                        skipped += 1
+                                        continue
+                                except Exception:
+                                    pass  # Keep pod if validation fails
                                 info["description_file"] = desc_file
                                 info["pod_log_file"] = log_file
                             else:
                                 info["description_file"] = ""
                                 info["pod_log_file"] = ""
                             out_ns_with_artifacts[p] = info
-                        cluster_result[ns] = out_ns_with_artifacts
-                        print(
-                            color(
-                                f"    Namespace {ns}: {len(res)} pod(s) found",
-                                YELLOW,
-                            )
-                        )
+                        if out_ns_with_artifacts:
+                            cluster_result[ns] = out_ns_with_artifacts
+                        msg = f"    Namespace {ns}: {len(out_ns_with_artifacts)} pod(s) kept"
+                        if skipped > 0:
+                            msg += f" ({skipped} skipped - pod deleted)"
+                        print(color(msg, YELLOW))
                 except Exception as e:
                     print(color(f"    Error processing namespace {ns}: {e}", RED))
 
