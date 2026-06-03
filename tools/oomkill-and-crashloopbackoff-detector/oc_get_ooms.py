@@ -1111,19 +1111,47 @@ def is_artifact_meaningful(content: str) -> bool:
     """
     Check if artifact content is meaningful (not just 'pod not found' errors).
 
+    Uses a two-stage approach:
+    1. Size check: If content is reasonably large (>2KB), assume it's meaningful
+    2. Pattern check: For small content, look for specific 'oc' error patterns
+
     Returns:
         True if content has useful information, False if pod was deleted/not found
     """
     if not content or not content.strip():
         return False
 
-    lower = content.lower()
-    # Check for "pod not found" or "notfound" errors from server
-    if "not found" in lower and "error from server" in lower:
-        return False
-    if "notfound" in lower and "pods" in lower:
-        return False
+    # Stage 1: Size-based heuristic
+    # If content is larger than 2KB, it's likely meaningful (not just an error message)
+    MEANINGFUL_SIZE_THRESHOLD = 2048  # 2KB
+    content_size = len(content.encode('utf-8'))
 
+    if content_size >= MEANINGFUL_SIZE_THRESHOLD:
+        return True
+
+    # Stage 2: Pattern matching for small content (< 2KB)
+    # Only apply strict error pattern checks on small files
+    lower = content.lower()
+    lines = content.strip().split('\n')
+    num_lines = len(lines)
+
+    # Small files (< 10 lines) with specific 'oc' error patterns are likely not meaningful
+    if num_lines < 10:
+        # Check for exact "Error from server (NotFound): pods "..." not found" pattern
+        if "error from server" in lower and "notfound" in lower and "pods" in lower:
+            return False
+        # Check for "Error from server: pods "..." not found" pattern
+        if "error from server" in lower and "not found" in lower and "pods" in lower:
+            return False
+        # Check for standalone "pod not found" errors
+        for line in lines:
+            line_lower = line.lower().strip()
+            if line_lower.startswith("error") and "pod" in line_lower and "not found" in line_lower:
+                return False
+
+    # If we got here, either:
+    # - Content is between 10 lines and 2KB (likely meaningful)
+    # - Or no error patterns matched
     return True
 
 
