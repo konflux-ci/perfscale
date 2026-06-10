@@ -1,0 +1,20 @@
+name: Validate PR
+on:
+  pull_request:
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+      - name: Bootstrap
+        run: |
+          make bootstrap
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Run checks
+        run: make check-all
