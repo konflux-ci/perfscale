@@ -29,7 +29,7 @@ query() {
     local result
     local retry_count=0
     local max_retries=10
-    
+
     # Retry logic for handling transient interruptions
     while [ "$retry_count" -le "$max_retries" ]; do
         # Capture output with error handling for interrupted system calls
@@ -46,7 +46,7 @@ query() {
                 return
             fi
         }
-        
+
         # Check for empty result
         if [ -z "$result" ]; then
             if [ "$retry_count" -lt "$max_retries" ]; then
@@ -60,7 +60,7 @@ query() {
                 return
             fi
         fi
-        
+
         # Validate JSON is complete (check if jq can parse it)
         if ! echo "$result" | jq empty >/dev/null 2>&1; then
             if [ "$retry_count" -lt "$max_retries" ]; then
@@ -74,7 +74,7 @@ query() {
                 return
             fi
         fi
-        
+
         # Check if result contains error
         if echo "$result" | jq -e '.error // .status' >/dev/null 2>&1; then
             local error_type
@@ -83,13 +83,13 @@ query() {
                 log "Query returned error: $result"
             fi
         fi
-        
+
         # Success - output result
         # Suppress "Interrupted system call" errors from echo (they're usually harmless)
         echo "$result" 2>/dev/null || echo "$result"
         return 0
     done
-    
+
     # Fallback if all retries failed
     echo '{}'
 }
@@ -102,7 +102,7 @@ bytes_to_mb() {
 
 # ------------------------------------------------------------
 # OPTIMIZED: Batch pods to avoid regex explosion with large pod counts
-# 
+#
 # SAFETY GUARANTEES:
 # 1. Pod list is obtained by filtering kube_pod_labels with label_tekton_dev_task="$TASK"
 #    This ensures we ONLY get pods belonging to the specified task
@@ -175,7 +175,7 @@ log "Processing $total pods in batches of $BATCH_SIZE..."
 while [ "$start" -lt "$total" ]; do
     end=$(( start + BATCH_SIZE ))
     [ "$end" -gt "$total" ] && end=$total
-    
+
     # Create regex for this batch: escape each pod name so literal chars (e.g. . | ( )) don't match wrong pods
     batch_pods_escaped=""
     idx=0
@@ -190,30 +190,30 @@ while [ "$start" -lt "$total" ]; do
     batch_pods="$batch_pods_escaped"
     batch_count=$((end - start))
     log "Processing batch $((start/BATCH_SIZE + 1)): pods $start to $((end-1)) ($batch_count pods)"
-    
+
     # ------------------------------------------------------------
     # MEMORY - Max
-    # Use container_memory_working_set_bytes (actual usage) instead of 
+    # Use container_memory_working_set_bytes (actual usage) instead of
     # container_memory_max_usage_bytes (which reflects limits, not actual usage)
     # ------------------------------------------------------------
     max_query="max_over_time(container_memory_working_set_bytes{container=\"$STEP\",pod=~\"($batch_pods)\",namespace=~\".*-tenant\"}[$RANGE])"
     max_json="$(query "$max_query")"
-    
+
     max_entry="$(echo "$max_json" | jq -r '
-      [.data.result[]? | 
+      [.data.result[]? |
         {
           value: ([.values[][1] | tonumber | floor | select(. > 0)] | max // 0),
           pod: .metric.pod,
           namespace: .metric.namespace
         }
-      ] | 
-      if length == 0 then 
+      ] |
+      if length == 0 then
         {value: 0, pod: "", namespace: "N/A"}
-      else 
+      else
         max_by(.value)
       end
     ')"
-    
+
     # Validate that the returned pod is in our task pod list
     returned_pod="$(echo "$max_entry" | jq -r '.pod // ""')"
     if [ -n "$returned_pod" ] && ! pod_in_task "$returned_pod"; then
@@ -224,13 +224,13 @@ while [ "$start" -lt "$total" ]; do
         batch_max_bytes="$(echo "$max_entry" | jq -r '.value // 0')"
         batch_max_mb=$(( batch_max_bytes / 1024 / 1024 ))
     fi
-    
+
     if [ "$batch_max_mb" -gt "$max_overall" ]; then
         max_overall="$batch_max_mb"
         max_overall_pod="$(echo "$max_entry" | jq -r '.pod // ""')"
         max_overall_ns="$(echo "$max_entry" | jq -r '.namespace // "N/A"')"
     fi
-    
+
     # ------------------------------------------------------------
     # MEMORY - Percentiles (actual percentile over all pod values, not max)
     # ------------------------------------------------------------
@@ -240,35 +240,35 @@ while [ "$start" -lt "$total" ]; do
         # Compute actual percentile: collect all values, sort, take element at (length-1)*q
         p_bytes="$(echo "$p_json" | jq --argjson pct "$q" -r '[.data.result[]?.values[][1] | tonumber | select(. > 0)] | sort | if length > 0 then .[(((length - 1) * $pct) | floor)] else 0 end')"
         p_mb=$(( p_bytes / 1024 / 1024 ))
-        
+
         case "$q" in
             0.95) [ "$p_mb" -gt "$perc95_overall" ] && perc95_overall="$p_mb" ;;
             0.90) [ "$p_mb" -gt "$perc90_overall" ] && perc90_overall="$p_mb" ;;
             0.50) [ "$p_mb" -gt "$median_overall" ] && median_overall="$p_mb" ;;
         esac
     done
-    
+
     # ------------------------------------------------------------
     # CPU - Max
     # ------------------------------------------------------------
     cpu_max_query="max_over_time(rate(container_cpu_usage_seconds_total{container=\"$STEP\",pod=~\"($batch_pods)\",namespace=~\".*-tenant\"}[5m])[$RANGE:5m])"
     cpu_max_json="$(query "$cpu_max_query")"
-    
+
     cpu_max_entry="$(echo "$cpu_max_json" | jq -r '
-      [.data.result[]? | 
+      [.data.result[]? |
         {
           value: ([.values[][1] | tonumber | select(. > 0)] | max // 0),
           pod: .metric.pod,
           namespace: .metric.namespace
         }
-      ] | 
-      if length == 0 then 
+      ] |
+      if length == 0 then
         {value: 0, pod: "", namespace: "N/A"}
-      else 
+      else
         max_by(.value)
       end
     ')"
-    
+
     # Validate that the returned pod is in our task pod list
     returned_cpu_pod="$(echo "$cpu_max_entry" | jq -r '.pod // ""')"
     if [ -n "$returned_cpu_pod" ] && ! pod_in_task "$returned_cpu_pod"; then
@@ -284,13 +284,13 @@ while [ "$start" -lt "$total" ]; do
     else
         cpu_max_millicores=0
     fi
-    
+
     if [ "$cpu_max_millicores" -gt "$cpu_max_overall" ]; then
         cpu_max_overall="$cpu_max_millicores"
         cpu_max_overall_pod="$(echo "$cpu_max_entry" | jq -r '.pod // ""')"
         cpu_max_overall_ns="$(echo "$cpu_max_entry" | jq -r '.namespace // "N/A"')"
     fi
-    
+
     # ------------------------------------------------------------
     # CPU - Percentiles (actual percentile over all pod values, not max)
     # ------------------------------------------------------------
@@ -304,14 +304,14 @@ while [ "$start" -lt "$total" ]; do
             cpu_p_millicores=$(echo "$cpu_p_cores * 1000" | bc 2>/dev/null | cut -d. -f1)
             [ -z "$cpu_p_millicores" ] && cpu_p_millicores=0
         fi
-        
+
         case "$q" in
             0.95) [ "$cpu_p_millicores" -gt "$cpu_p95_overall" ] && cpu_p95_overall="$cpu_p_millicores" ;;
             0.90) [ "$cpu_p_millicores" -gt "$cpu_p90_overall" ] && cpu_p90_overall="$cpu_p_millicores" ;;
             0.50) [ "$cpu_p_millicores" -gt "$cpu_median_overall" ] && cpu_median_overall="$cpu_p_millicores" ;;
         esac
     done
-    
+
     start=$end
 done
 

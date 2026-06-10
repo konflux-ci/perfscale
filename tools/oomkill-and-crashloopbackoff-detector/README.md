@@ -621,7 +621,7 @@ The script `oom_logs_and_desc_bundle_generator` builds **date-specific** log/des
 2. **Report**: For each (type, date, cluster, namespace), prints one line with instance count, **namespace**, **cluster**, and **owner name + email** (from CODEOWNERS + GitLab via `glab`). If `-c` is not passed, the script clones konflux-release-data to a temp dir for this lookup.
 3. Creates **one tarball per (type, date)** with the **pod name in the filename**, under `output/tarballs/`, e.g.:
    - `output/tarballs/OOMKilled-oom-stress-retry-instance-28th-Jan-2026.tgz`
-   - `output/tarballs/CrashLoopBackOff-<pod>-instance-29th-Jan-2026.tgz`  
+   - `output/tarballs/CrashLoopBackOff-<pod>-instance-29th-Jan-2026.tgz`
    Find all tarballs for a pod: `ls output/tarballs/*<pod-name>*.tgz`. Each tarball contains the description and log files for that pod on that date.
 
 **Example report output:**
@@ -678,7 +678,7 @@ REMOTE_TOKEN='your-cookie-or-token' ./oom_logs_and_desc_bundle_generator -p my-p
 
 ## 📝 License
 
-Internal / Team Utility  
+Internal / Team Utility
 Adapt as needed.
 
 ---
