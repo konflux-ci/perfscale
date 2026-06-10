@@ -1,4 +1,7 @@
 .*.swp
+.ruff_cache/
+venv/
+__pycache__/
 
 .agentready/
 
