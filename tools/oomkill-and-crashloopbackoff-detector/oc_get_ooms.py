@@ -8,7 +8,8 @@ parallelized at cluster and namespace levels, with artifact collection.
 New in this version:
 - When a pod is detected as OOMKilled or CrashLoopBackOff, save:
     - `oc describe pod <pod>` output
-    - One log file with `oc logs <pod> --previous` (crashed container) then `oc logs <pod>` (current), appended
+    - One log file with `oc logs <pod> --previous` (crashed container)
+      then `oc logs <pod>` (current), appended
   into per-cluster directories under output/logs_and_description_files/<cluster>/
   Filenames include namespace, pod name, and timestamp to avoid collisions.
 - CSV and JSON now include the absolute paths to the description and pod log files:
@@ -21,22 +22,24 @@ All previously requested features retained:
 
 from __future__ import annotations
 
-import subprocess
-import json
-import csv
-import re
-import sys
-import time
-import logging
-import glob
 import atexit
+import contextlib
+import csv
+import glob
+import json
+import logging
+import re
 import shutil
+import subprocess
+import sys
 import tempfile
-from datetime import datetime, timezone, date
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from pathlib import Path
-from typing import List, Dict, Any, Tuple, Optional, Set, Pattern
+import time
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import UTC, date, datetime
+from pathlib import Path
+from re import Pattern
+from typing import Any
 
 # Import HTML export module
 try:
@@ -82,30 +85,28 @@ DEFAULT_RETRIES = 3
 DEFAULT_OC_TIMEOUT = 45  # seconds
 RETRY_DELAY_SECONDS = 3
 
-# konflux-release-data (CODEOWNERS for namespace owners); same default as oom_logs_and_desc_bundle_generator
+# konflux-release-data (CODEOWNERS for namespace owners);
+# same default as oom_logs_and_desc_bundle_generator
 KONFLUX_RELEASE_DATA_REPO = "git@gitlab.cee.redhat.com:releng/konflux-release-data.git"
-_CODEOWNERS_TEMP_DIR: Optional[str] = None
+_CODEOWNERS_TEMP_DIR: str | None = None
 _CODEOWNERS_ATEXIT_REGISTERED = False
 DEFAULT_NS_BATCH_SIZE = 10
 DEFAULT_NS_WORKERS = 5
 DEFAULT_BATCH_SIZE = 2
 
 
-
 # ---------------------------
 # Command runner with retries
 # ---------------------------
 def run_cmd_with_retries(
-    cmd: List[str], retries: int = DEFAULT_RETRIES, timeout: Optional[int] = None
-) -> Tuple[int, str, str]:
+    cmd: list[str], retries: int = DEFAULT_RETRIES, timeout: int | None = None
+) -> tuple[int, str, str]:
     attempt = 0
     last_err = ""
     while attempt < max(1, retries):
         attempt += 1
         try:
-            completed = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=timeout
-            )
+            completed = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
             stdout = (completed.stdout or "").strip()
             stderr = (completed.stderr or "").strip()
             return completed.returncode, stdout, stderr
@@ -119,17 +120,15 @@ def run_cmd_with_retries(
 
 
 def run_shell_cmd_with_retries(
-    cmd: str, retries: int = DEFAULT_RETRIES, timeout: Optional[int] = None
-) -> Tuple[int, str, str]:
-    return run_cmd_with_retries(
-        ["/bin/sh", "-c", cmd], retries=retries, timeout=timeout
-    )
+    cmd: str, retries: int = DEFAULT_RETRIES, timeout: int | None = None
+) -> tuple[int, str, str]:
+    return run_cmd_with_retries(["/bin/sh", "-c", cmd], retries=retries, timeout=timeout)
 
 
 # ---------------------------
 # CLI tool detection and helpers
 # ---------------------------
-_CLI_TOOL: Optional[str] = None  # Cached CLI tool (kubectl or oc)
+_CLI_TOOL: str | None = None  # Cached CLI tool (kubectl or oc)
 
 
 def detect_cli_tool() -> str:
@@ -144,7 +143,9 @@ def detect_cli_tool() -> str:
         return _CLI_TOOL
 
     # Try kubectl first (works with any Kubernetes cluster)
-    rc, _, _ = run_cmd_with_retries(["kubectl", "version", "--client", "--short"], retries=1, timeout=5)
+    rc, _, _ = run_cmd_with_retries(
+        ["kubectl", "version", "--client", "--short"], retries=1, timeout=5
+    )
     if rc == 0:
         _CLI_TOOL = "kubectl"
         return _CLI_TOOL
@@ -162,9 +163,7 @@ def detect_cli_tool() -> str:
     )
 
 
-def cli_cmd_parts(
-    context: str, cli_timeout_seconds: int, subcommand: List[str]
-) -> List[str]:
+def cli_cmd_parts(context: str, cli_timeout_seconds: int, subcommand: list[str]) -> list[str]:
     """Build command parts for kubectl or oc."""
     cli_tool = detect_cli_tool()
     parts = [cli_tool, f"--request-timeout={cli_timeout_seconds}s"]
@@ -175,24 +174,22 @@ def cli_cmd_parts(
 
 
 def run_cli_subcommand(
-    context: str, subcommand: List[str], retries: int, cli_timeout_seconds: int
-) -> Tuple[int, str, str]:
+    context: str, subcommand: list[str], retries: int, cli_timeout_seconds: int
+) -> tuple[int, str, str]:
     """Run a kubectl or oc subcommand."""
     cmd = cli_cmd_parts(context, cli_timeout_seconds, subcommand)
     return run_cmd_with_retries(cmd, retries=retries, timeout=cli_timeout_seconds + 5)
 
 
 # Backward compatibility aliases
-def oc_cmd_parts(
-    context: str, oc_timeout_seconds: int, subcommand: List[str]
-) -> List[str]:
+def oc_cmd_parts(context: str, oc_timeout_seconds: int, subcommand: list[str]) -> list[str]:
     """Backward compatibility alias for cli_cmd_parts."""
     return cli_cmd_parts(context, oc_timeout_seconds, subcommand)
 
 
 def run_oc_subcommand(
-    context: str, subcommand: List[str], retries: int, oc_timeout_seconds: int
-) -> Tuple[int, str, str]:
+    context: str, subcommand: list[str], retries: int, oc_timeout_seconds: int
+) -> tuple[int, str, str]:
     """Backward compatibility alias for run_cli_subcommand."""
     return run_cli_subcommand(context, subcommand, retries, oc_timeout_seconds)
 
@@ -200,22 +197,20 @@ def run_oc_subcommand(
 # ---------------------------
 # context utilities
 # ---------------------------
-def get_all_contexts(retries: int, oc_timeout_seconds: int) -> List[str]:
+def get_all_contexts(retries: int, oc_timeout_seconds: int) -> list[str]:
     """Get all available Kubernetes/OpenShift contexts."""
     cli_tool = detect_cli_tool()
     cmd = [cli_tool, "config", "get-contexts", "-o", "name"]
-    rc, out, err = run_cmd_with_retries(
-        cmd, retries=retries, timeout=oc_timeout_seconds + 5
-    )
+    rc, out, err = run_cmd_with_retries(cmd, retries=retries, timeout=oc_timeout_seconds + 5)
     if rc != 0 or not out:
         return []
     return [line.strip() for line in out.splitlines() if line.strip()]
 
 
 def match_contexts_by_substring(
-    substrings: List[str],
-    available_contexts: List[str],
-) -> List[str]:
+    substrings: list[str],
+    available_contexts: list[str],
+) -> list[str]:
     """
     Match context substrings against available contexts.
 
@@ -231,9 +226,7 @@ def match_contexts_by_substring(
     """
     matched_contexts = []
     for substring in substrings:
-        matches = [
-            ctx for ctx in available_contexts if substring.lower() in ctx.lower()
-        ]
+        matches = [ctx for ctx in available_contexts if substring.lower() in ctx.lower()]
         if not matches:
             print(
                 color(
@@ -241,7 +234,7 @@ def match_contexts_by_substring(
                     RED,
                 )
             )
-            print(color(f"Available contexts:", YELLOW))
+            print(color("Available contexts:", YELLOW))
             for ctx in available_contexts:
                 print(f"  - {ctx}")
             sys.exit(1)
@@ -276,9 +269,7 @@ def get_current_context(retries: int, oc_timeout_seconds: int) -> str:
     """Get the current Kubernetes/OpenShift context."""
     cli_tool = detect_cli_tool()
     cmd = [cli_tool, "config", "current-context"]
-    rc, out, err = run_cmd_with_retries(
-        cmd, retries=retries, timeout=oc_timeout_seconds + 5
-    )
+    rc, out, err = run_cmd_with_retries(cmd, retries=retries, timeout=oc_timeout_seconds + 5)
     return out.strip() if rc == 0 else ""
 
 
@@ -307,7 +298,7 @@ def parse_timestamp_to_iso(ts: str) -> str:
         return ts
 
 
-def _parse_kubernetes_timestamp_utc(ts: str) -> Optional[float]:
+def _parse_kubernetes_timestamp_utc(ts: str) -> float | None:
     """
     Parse a Kubernetes timestamp string (RFC3339, typically UTC with Z) to Unix seconds.
     Returns None if ts is empty or unparseable.
@@ -317,7 +308,7 @@ def _parse_kubernetes_timestamp_utc(ts: str) -> Optional[float]:
     try:
         base = ts.split(".")[0].rstrip("Z")
         dt = datetime.strptime(base, "%Y-%m-%dT%H:%M:%S")
-        return dt.replace(tzinfo=timezone.utc).timestamp()
+        return dt.replace(tzinfo=UTC).timestamp()
     except (ValueError, AttributeError):
         return None
 
@@ -337,7 +328,7 @@ def _timestamp_in_range(ts_str: str, cutoff_time: float) -> bool:
 
 
 def now_ts_for_filename() -> str:
-    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
 
 
 def timestamp_for_backup() -> str:
@@ -356,6 +347,7 @@ def timestamp_for_backup() -> str:
         else:
             # Fallback: use time.tzname
             import time
+
             if time.tzname and len(time.tzname) > 0:
                 tz_abbr = time.tzname[0] if time.daylight == 0 else time.tzname[1]
     except Exception:
@@ -370,10 +362,11 @@ def report_generated_est() -> str:
     """Return current time formatted for report header, preferably in EST (America/New_York)."""
     try:
         from zoneinfo import ZoneInfo
+
         now = datetime.now(ZoneInfo("America/New_York"))
         return now.strftime("%d-%b-%Y %H:%M:%S %Z")
     except Exception:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         return now.strftime("%d-%b-%Y %H:%M:%S UTC")
 
 
@@ -403,7 +396,7 @@ def timestamp_for_backup_from_file(file_path: Path) -> str:
 # ---------------------------
 def check_cluster_connectivity(
     context: str, retries: int, oc_timeout_seconds: int
-) -> Tuple[bool, str]:
+) -> tuple[bool, str]:
     """Check cluster connectivity using appropriate method for the CLI tool."""
     cli_tool = detect_cli_tool()
 
@@ -425,8 +418,8 @@ def check_cluster_connectivity(
 
 
 def check_all_clusters_connectivity(
-    contexts: List[str], retries: int, oc_timeout_seconds: int
-) -> Tuple[bool, List[Tuple[str, bool, str]]]:
+    contexts: list[str], retries: int, oc_timeout_seconds: int
+) -> tuple[bool, list[tuple[str, bool, str]]]:
     """
     Check connectivity to all clusters.
 
@@ -438,9 +431,9 @@ def check_all_clusters_connectivity(
     report = []
     all_connected = True
 
-    print(color("\n" + "="*80, BLUE))
+    print(color("\n" + "=" * 80, BLUE))
     print(color("Checking Cluster Connectivity", BLUE))
-    print(color("="*80, BLUE))
+    print(color("=" * 80, BLUE))
 
     for ctx in contexts:
         cluster = short_cluster_name(ctx)
@@ -455,12 +448,12 @@ def check_all_clusters_connectivity(
             print(color(f"  ✗ {cluster}: {error_msg}", RED))
             all_connected = False
 
-    print(color("="*80, BLUE))
+    print(color("=" * 80, BLUE))
 
     return all_connected, report
 
 
-def print_connectivity_report_summary(connectivity_report: List[Tuple[str, bool, str]]) -> None:
+def print_connectivity_report_summary(connectivity_report: list[tuple[str, bool, str]]) -> None:
     """
     Print the Cluster Connectivity Report summary (second block).
     Does not prompt for user input.
@@ -480,7 +473,7 @@ def print_connectivity_report_summary(connectivity_report: List[Tuple[str, bool,
         print(color("  Data collection may fail for these clusters.", YELLOW))
         print(color("  Continuing with accessible clusters only...", YELLOW))
 
-    print(color("="*80, BLUE))
+    print(color("=" * 80, BLUE))
 
 
 # ---------------------------
@@ -515,8 +508,8 @@ def get_all_events_oc(
     namespace: str,
     retries: int,
     oc_timeout_seconds: int,
-    time_range_seconds: Optional[int] = None,
-) -> List[Dict[str, Any]]:
+    time_range_seconds: int | None = None,
+) -> list[dict[str, Any]]:
     """
     Get all events for a namespace (single API call for efficiency).
 
@@ -538,14 +531,10 @@ def get_all_events_oc(
 
     # Filter by time range if provided (Kubernetes event timestamps are UTC)
     if time_range_seconds:
-        cutoff_time = datetime.now(timezone.utc).timestamp() - time_range_seconds
+        cutoff_time = datetime.now(UTC).timestamp() - time_range_seconds
         filtered_events = []
         for ev in events:
-            ts = (
-                ev.get("eventTime")
-                or ev.get("lastTimestamp")
-                or ev.get("firstTimestamp")
-            )
+            ts = ev.get("eventTime") or ev.get("lastTimestamp") or ev.get("firstTimestamp")
             if ts:
                 try:
                     # Parse as UTC and compare with cutoff
@@ -564,7 +553,7 @@ def get_all_events_oc(
     return events
 
 
-def _application_component_from_labels(labels: Optional[Dict[str, str]]) -> Tuple[str, str]:
+def _application_component_from_labels(labels: dict[str, str] | None) -> tuple[str, str]:
     """Extract Application and Component from pod metadata.labels.
 
     Application: appstudio.openshift.io/application (Konflux), then standard Kubernetes labels.
@@ -594,8 +583,11 @@ def get_pods_items(
     namespace: str,
     retries: int,
     oc_timeout_seconds: int,
-) -> List[Dict[str, Any]]:
-    """Fetch pods in namespace as list of pod items (for reuse in OOM/Crash detection and labels)."""
+) -> list[dict[str, Any]]:
+    """Fetch pods in namespace as list of pod items.
+
+    For reuse in OOM/Crash detection and labels.
+    """
     subcmd = ["-n", namespace, "get", "pods", "-o", "json", "--ignore-not-found"]
     rc, out, err = run_oc_subcommand(
         context, subcmd, retries=retries, oc_timeout_seconds=oc_timeout_seconds
@@ -616,13 +608,11 @@ def find_events_by_reason_oc(
     reason_substring: str,
     retries: int,
     oc_timeout_seconds: int,
-    time_range_seconds: Optional[int] = None,
-) -> List[Dict[str, str]]:
+    time_range_seconds: int | None = None,
+) -> list[dict[str, str]]:
     """Find events matching a reason substring in a namespace."""
-    events = get_all_events_oc(
-        context, namespace, retries, oc_timeout_seconds, time_range_seconds
-    )
-    res: List[Dict[str, str]] = []
+    events = get_all_events_oc(context, namespace, retries, oc_timeout_seconds, time_range_seconds)
+    res: list[dict[str, str]] = []
     for ev in events:
         reason = ev.get("reason", "")
         if reason_substring.lower() not in reason.lower():
@@ -630,9 +620,7 @@ def find_events_by_reason_oc(
         pod = ev.get("involvedObject", {}).get("name")
         ts = ev.get("eventTime") or ev.get("lastTimestamp") or ev.get("firstTimestamp")
         if pod and ts:
-            res.append(
-                {"pod": pod, "reason": reason, "timestamp": parse_timestamp_to_iso(ts)}
-            )
+            res.append({"pod": pod, "reason": reason, "timestamp": parse_timestamp_to_iso(ts)})
     return res
 
 
@@ -641,9 +629,9 @@ def oomkilled_via_pods_oc(
     namespace: str,
     retries: int,
     oc_timeout_seconds: int,
-    time_range_seconds: Optional[int] = None,
-    items: Optional[List[Dict[str, Any]]] = None,
-) -> List[Dict[str, str]]:
+    time_range_seconds: int | None = None,
+    items: list[dict[str, Any]] | None = None,
+) -> list[dict[str, str]]:
     """Find pods that were OOMKilled by querying pod status.
 
     Enhanced detection checks multiple states:
@@ -657,11 +645,11 @@ def oomkilled_via_pods_oc(
     """
     if items is None:
         items = get_pods_items(context, namespace, retries, oc_timeout_seconds)
-    res: List[Dict[str, str]] = []
-    seen_pods: Set[str] = set()  # Avoid duplicates with timestamps
-    cutoff_time: Optional[float] = None
+    res: list[dict[str, str]] = []
+    seen_pods: set[str] = set()  # Avoid duplicates with timestamps
+    cutoff_time: float | None = None
     if time_range_seconds is not None:
-        cutoff_time = datetime.now(timezone.utc).timestamp() - time_range_seconds
+        cutoff_time = datetime.now(UTC).timestamp() - time_range_seconds
 
     for item in items:
         pod_name = item.get("metadata", {}).get("name")
@@ -727,9 +715,9 @@ def crashloop_via_pods_oc(
     namespace: str,
     retries: int,
     oc_timeout_seconds: int,
-    time_range_seconds: Optional[int] = None,
-    items: Optional[List[Dict[str, Any]]] = None,
-) -> List[Dict[str, str]]:
+    time_range_seconds: int | None = None,
+    items: list[dict[str, Any]] | None = None,
+) -> list[dict[str, str]]:
     """Find pods in CrashLoopBackOff state by querying pod status.
 
     Enhanced detection checks multiple states:
@@ -746,11 +734,11 @@ def crashloop_via_pods_oc(
     """
     if items is None:
         items = get_pods_items(context, namespace, retries, oc_timeout_seconds)
-    res: List[Dict[str, str]] = []
-    seen_pods: Set[str] = set()  # Avoid duplicates
-    cutoff_time: Optional[float] = None
+    res: list[dict[str, str]] = []
+    seen_pods: set[str] = set()  # Avoid duplicates
+    cutoff_time: float | None = None
     if time_range_seconds is not None:
-        cutoff_time = datetime.now(timezone.utc).timestamp() - time_range_seconds
+        cutoff_time = datetime.now(UTC).timestamp() - time_range_seconds
 
     for item in items:
         pod_name = item.get("metadata", {}).get("name")
@@ -770,7 +758,13 @@ def crashloop_via_pods_oc(
                 # No timestamp for waiting state; include when no time range or always include
                 if pod_name not in seen_pods:
                     res.append(
-                        {"pod": pod_name, "reason": "CrashLoopBackOff", "timestamp": "", "application": app, "component": comp}
+                        {
+                            "pod": pod_name,
+                            "reason": "CrashLoopBackOff",
+                            "timestamp": "",
+                            "application": app,
+                            "component": comp,
+                        }
                     )
                     seen_pods.add(pod_name)
                 continue
@@ -825,10 +819,14 @@ def crashloop_via_pods_oc(
                 if has_terminated_state and pod_name not in seen_pods:
                     # Use finishedAt from either state for time filter if available
                     finished_at = ""
-                    term = cs.get("state", {}).get("terminated") or cs.get("lastState", {}).get("terminated")
+                    term = cs.get("state", {}).get("terminated") or cs.get("lastState", {}).get(
+                        "terminated"
+                    )
                     if term:
                         finished_at = term.get("finishedAt", "")
-                    if cutoff_time is not None and not _timestamp_in_range(finished_at, cutoff_time):
+                    if cutoff_time is not None and not _timestamp_in_range(
+                        finished_at, cutoff_time
+                    ):
                         continue
                     res.append(
                         {
@@ -844,28 +842,30 @@ def crashloop_via_pods_oc(
 
         # Also check pod phase - Failed or Pending might indicate issues
         pod_phase = item.get("status", {}).get("phase", "")
-        if pod_phase == "Failed":
-            if pod_name not in seen_pods:
-                has_restarts = any(
-                    cs.get("restartCount", 0) > 0
-                    for cs in all_statuses
+        if pod_phase == "Failed" and pod_name not in seen_pods:
+            has_restarts = any(cs.get("restartCount", 0) > 0 for cs in all_statuses)
+            if has_restarts:
+                # No specific finishedAt for phase Failed; include (no timestamp)
+                res.append(
+                    {
+                        "pod": pod_name,
+                        "reason": "CrashLoopBackOff",
+                        "timestamp": "",
+                        "application": app,
+                        "component": comp,
+                    }
                 )
-                if has_restarts:
-                    # No specific finishedAt for phase Failed; include (no timestamp)
-                    res.append(
-                        {"pod": pod_name, "reason": "CrashLoopBackOff", "timestamp": "", "application": app, "component": comp}
-                    )
-                    seen_pods.add(pod_name)
+                seen_pods.add(pod_name)
 
     return res
-
-
 
 
 # ---------------------------
 # Ephemeral namespace detection
 # ---------------------------
-def is_ephemeral_namespace(namespace_name: str, namespace_metadata: Optional[Dict[str, Any]] = None) -> bool:
+def is_ephemeral_namespace(
+    namespace_name: str, namespace_metadata: dict[str, Any] | None = None
+) -> bool:
     """
     Detect if a namespace is an ephemeral test or cluster namespace.
 
@@ -910,28 +910,33 @@ def is_ephemeral_namespace(namespace_name: str, namespace_metadata: Optional[Dic
 
                 # Check if label key matches known ephemeral indicators
                 for indicator_key, indicator_values in ephemeral_label_indicators.items():
-                    if indicator_key in label_key_lower:
-                        if any(val in label_value_lower for val in indicator_values):
-                            return True
+                    if indicator_key in label_key_lower and any(
+                        val in label_value_lower for val in indicator_values
+                    ):
+                        return True
 
     # Method 2: Name pattern matching (fallback if labels not available)
     # Ephemeral cluster namespaces: clusters-<uuid> pattern
     # UUID format: 8-4-4-4-12 hex digits (e.g., clusters-4e52ba17-c17b-4f35-b7e0-0215e63678a0)
-    if re.match(r'^clusters-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', namespace_name, re.IGNORECASE):
+    if re.match(
+        r"^clusters-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+        namespace_name,
+        re.IGNORECASE,
+    ):
         return True
 
     # Ephemeral test namespaces: common test/e2e/ephemeral patterns
     ephemeral_test_patterns = [
-        r'^test-',
-        r'^e2e-',
-        r'^ephemeral-',
-        r'^ci-',
-        r'^pr-',
-        r'^temp-',
-        r'^tmp-',
-        r'-test$',
-        r'-e2e$',
-        r'-ephemeral$',
+        r"^test-",
+        r"^e2e-",
+        r"^ephemeral-",
+        r"^ci-",
+        r"^pr-",
+        r"^temp-",
+        r"^tmp-",
+        r"-test$",
+        r"-e2e$",
+        r"-ephemeral$",
     ]
 
     for pattern in ephemeral_test_patterns:
@@ -948,10 +953,10 @@ def get_namespaces_for_context(
     context: str,
     retries: int,
     oc_timeout_seconds: int,
-    include_patterns: Optional[List[Pattern]] = None,
-    exclude_patterns: Optional[List[Pattern]] = None,
+    include_patterns: list[Pattern] | None = None,
+    exclude_patterns: list[Pattern] | None = None,
     exclude_ephemeral: bool = True,
-) -> List[str]:
+) -> list[str]:
     """
     Get namespaces for a context, optionally filtered by include/exclude patterns.
 
@@ -978,7 +983,7 @@ def get_namespaces_for_context(
         if ns_name:
             namespaces_with_metadata.append((ns_name, metadata))
 
-    filtered: List[str] = []
+    filtered: list[str] = []
     for ns_name, ns_metadata in namespaces_with_metadata:
         # Exclude ephemeral namespaces if enabled (check both labels and name patterns)
         if exclude_ephemeral and is_ephemeral_namespace(ns_name, ns_metadata):
@@ -1013,7 +1018,7 @@ def save_pod_artifacts(
     retries: int,
     oc_timeout_seconds: int,
     artifacts_root: Path,
-) -> Tuple[str, str]:
+) -> tuple[str, str]:
     """
     Save 'oc describe pod' and pod logs into files under artifacts_root/<cluster>/.
     Log file contains: first --previous (crashed container), then current logs, in one file.
@@ -1043,9 +1048,7 @@ def save_pod_artifacts(
             oc_timeout_seconds=oc_timeout_seconds,
         )
         content_desc = (
-            out
-            if rc == 0 and out
-            else (err if err else "Failed to fetch pod description")
+            out if rc == 0 and out else (err if err else "Failed to fetch pod description")
         )
     except Exception as e:
         logging.error(f"Error fetching pod description for {namespace}/{pod}: {e}")
@@ -1056,15 +1059,13 @@ def save_pod_artifacts(
     except Exception as e:
         # fallback to best-effort path
         desc_path = cluster_dir / f"{ns_safe}__{pod_safe}__{ts}__desc.failed.txt"
-        try:
+        with contextlib.suppress(Exception):
             desc_path.write_text(
                 f"Failed to write description: {e}\nOriginal content:\n{content_desc}"
             )
-        except Exception:
-            pass
 
     # oc logs: --previous first (crashed container), then current; append both to one file
-    log_sections: List[str] = []
+    log_sections: list[str] = []
     try:
         # 1. Previous container logs (from the run that OOM'd/crashed)
         rc_prev, out_prev, err_prev = run_oc_subcommand(
@@ -1085,9 +1086,7 @@ def save_pod_artifacts(
             oc_timeout_seconds=oc_timeout_seconds,
         )
         cur_content = out_cur if rc_cur == 0 and out_cur else (err_cur or "(no current logs)")
-        log_sections.append(
-            "=== Current container logs (oc logs <pod>) ===\n" + cur_content
-        )
+        log_sections.append("=== Current container logs (oc logs <pod>) ===\n" + cur_content)
         log_content = "\n\n".join(log_sections)
     except Exception as e:
         logging.error(f"Error fetching logs for {namespace}/{pod}: {e}")
@@ -1097,12 +1096,8 @@ def save_pod_artifacts(
         log_path.write_text(log_content)
     except Exception as e:
         log_path = cluster_dir / f"{ns_safe}__{pod_safe}__{ts}__log.failed.txt"
-        try:
-            log_path.write_text(
-                f"Failed to write logs: {e}\nOriginal logs content:\n{log_content}"
-            )
-        except Exception:
-            pass
+        with contextlib.suppress(Exception):
+            log_path.write_text(f"Failed to write logs: {e}\nOriginal logs content:\n{log_content}")
 
     return str(desc_path.resolve()), str(log_path.resolve())
 
@@ -1163,10 +1158,10 @@ def namespace_worker_oc(
     namespace: str,
     retries: int,
     oc_timeout_seconds: int,
-    time_range_seconds: Optional[int] = None,
-) -> Optional[Dict[str, Dict[str, Any]]]:
+    time_range_seconds: int | None = None,
+) -> dict[str, dict[str, Any]] | None:
     """Process namespace to find OOMKilled and CrashLoopBackOff pods."""
-    pod_map: Dict[str, Dict[str, Any]] = {}
+    pod_map: dict[str, dict[str, Any]] = {}
 
     # OPTIMIZATION: Fetch events once instead of 3 separate API calls
     all_events = get_all_events_oc(
@@ -1178,9 +1173,9 @@ def namespace_worker_oc(
     )
 
     # Filter events in memory for OOMKilled, CrashLoop, and BackOff
-    oom_events: List[Dict[str, str]] = []
-    crash_events: List[Dict[str, str]] = []
-    backoff_events: List[Dict[str, str]] = []
+    oom_events: list[dict[str, str]] = []
+    crash_events: list[dict[str, str]] = []
+    backoff_events: list[dict[str, str]] = []
 
     for ev in all_events:
         reason = ev.get("reason", "")
@@ -1209,13 +1204,16 @@ def namespace_worker_oc(
             # causing false-positive CrashLoopBackOff reports (KONFLUX-13422).
             backoff_events.append(event_data)
 
-    # Fetch pods once for both OOM/Crash detection and for application/component labels (incl. event-only pods)
+    # Fetch pods once for both OOM/Crash detection and for
+    # application/component labels (incl. event-only pods)
     pod_items = get_pods_items(context, namespace, retries, oc_timeout_seconds)
-    labels_map: Dict[str, Tuple[str, str]] = {}
+    labels_map: dict[str, tuple[str, str]] = {}
     for item in pod_items:
         name = item.get("metadata", {}).get("name")
         if name:
-            labels_map[name] = _application_component_from_labels(item.get("metadata", {}).get("labels"))
+            labels_map[name] = _application_component_from_labels(
+                item.get("metadata", {}).get("labels")
+            )
 
     # Also check pod status directly for OOMKilled and CrashLoopBackOff (same time range)
     oom_pods = oomkilled_via_pods_oc(
@@ -1239,7 +1237,14 @@ def namespace_worker_oc(
         p = e["pod"]
         pod_map.setdefault(
             p,
-            {"pod": p, "oom_timestamps": [], "crash_timestamps": [], "sources": set(), "application": "", "component": ""},
+            {
+                "pod": p,
+                "oom_timestamps": [],
+                "crash_timestamps": [],
+                "sources": set(),
+                "application": "",
+                "component": "",
+            },
         )
         pod_map[p]["oom_timestamps"].append(e.get("timestamp", ""))
         pod_map[p]["sources"].add("events")
@@ -1249,7 +1254,14 @@ def namespace_worker_oc(
         p = e["pod"]
         pod_map.setdefault(
             p,
-            {"pod": p, "oom_timestamps": [], "crash_timestamps": [], "sources": set(), "application": "", "component": ""},
+            {
+                "pod": p,
+                "oom_timestamps": [],
+                "crash_timestamps": [],
+                "sources": set(),
+                "application": "",
+                "component": "",
+            },
         )
         pod_map[p]["crash_timestamps"].append(e.get("timestamp", ""))
         pod_map[p]["sources"].add("events")
@@ -1260,7 +1272,14 @@ def namespace_worker_oc(
         p = e["pod"]
         pod_map.setdefault(
             p,
-            {"pod": p, "oom_timestamps": [], "crash_timestamps": [], "sources": set(), "application": e.get("application", ""), "component": e.get("component", "")},
+            {
+                "pod": p,
+                "oom_timestamps": [],
+                "crash_timestamps": [],
+                "sources": set(),
+                "application": e.get("application", ""),
+                "component": e.get("component", ""),
+            },
         )
         pod_map[p]["oom_timestamps"].append(e.get("timestamp", ""))
         pod_map[p]["sources"].add("oc_get_pods")
@@ -1270,7 +1289,14 @@ def namespace_worker_oc(
         p = e["pod"]
         pod_map.setdefault(
             p,
-            {"pod": p, "oom_timestamps": [], "crash_timestamps": [], "sources": set(), "application": e.get("application", ""), "component": e.get("component", "")},
+            {
+                "pod": p,
+                "oom_timestamps": [],
+                "crash_timestamps": [],
+                "sources": set(),
+                "application": e.get("application", ""),
+                "component": e.get("component", ""),
+            },
         )
         pod_map[p]["crash_timestamps"].append(e.get("timestamp", ""))
         pod_map[p]["sources"].add("oc_get_pods")
@@ -1278,7 +1304,7 @@ def namespace_worker_oc(
         pod_map[p]["component"] = e.get("component", "") or pod_map[p].get("component", "")
 
     if pod_map:
-        out_ns: Dict[str, Dict[str, Any]] = {}
+        out_ns: dict[str, dict[str, Any]] = {}
         for p, info in pod_map.items():
             out_ns[p] = {
                 "pod": p,
@@ -1301,10 +1327,10 @@ def query_context(
     oc_timeout_seconds: int,
     ns_batch_size: int = DEFAULT_NS_BATCH_SIZE,
     ns_workers: int = DEFAULT_NS_WORKERS,
-    time_range_seconds: Optional[int] = None,
+    time_range_seconds: int | None = None,
     exclude_ephemeral: bool = True,
-    artifacts_root: Optional[Path] = None,
-) -> Tuple[str, Dict[str, Any], Optional[str]]:
+    artifacts_root: Path | None = None,
+) -> tuple[str, dict[str, Any], str | None]:
     cluster = short_cluster_name(context)
     print(color(f"\n→ Processing cluster: {cluster}", BLUE))
 
@@ -1333,14 +1359,14 @@ def query_context(
         for ns in namespaces:
             print(color(f"    {ns}", BLUE))
 
-    cluster_result: Dict[str, Any] = {}
+    cluster_result: dict[str, Any] = {}
 
     total_ns = len(namespaces)
     for i in range(0, total_ns, ns_batch_size):
         ns_batch = namespaces[i : i + ns_batch_size]
         print(
             color(
-                f"  Namespace batch {i//ns_batch_size + 1}: {len(ns_batch)} namespaces",
+                f"  Namespace batch {i // ns_batch_size + 1}: {len(ns_batch)} namespaces",
                 YELLOW,
             )
         )
@@ -1365,12 +1391,17 @@ def query_context(
                     res = fut.result()
                     if res:
                         # Save artifacts for each pod found in this namespace
-                        out_ns_with_artifacts: Dict[str, Dict[str, Any]] = {}
+                        out_ns_with_artifacts: dict[str, dict[str, Any]] = {}
                         skipped = 0
                         for p, info in res.items():
                             if artifacts_root is not None:
                                 desc_file, log_file = save_pod_artifacts(
-                                    context, cluster, ns, p, retries, oc_timeout_seconds,
+                                    context,
+                                    cluster,
+                                    ns,
+                                    p,
+                                    retries,
+                                    oc_timeout_seconds,
                                     artifacts_root=artifacts_root,
                                 )
                                 # Validate artifacts - skip if pod was deleted/not found
@@ -1416,28 +1447,30 @@ def query_context(
 # cluster batch runner
 # ---------------------------
 def run_batches(
-    contexts: List[str],
+    contexts: list[str],
     batch_size: int,
     retries: int,
     oc_timeout_seconds: int,
     ns_batch_size: int,
     ns_workers: int,
-    time_range_seconds: Optional[int] = None,
+    time_range_seconds: int | None = None,
     exclude_ephemeral: bool = True,
-    output_dir: Optional[Path] = None,
-) -> Tuple[Dict[str, Any], Dict[str, str]]:
+    output_dir: Path | None = None,
+) -> tuple[dict[str, Any], dict[str, str]]:
     """
     Run cluster processing with constant parallelism.
 
     Instead of processing in fixed batches, maintains constant parallelism:
     when one cluster finishes, immediately start the next one.
     """
-    artifacts_root = (output_dir if output_dir is not None else Path("output")).resolve() / "logs_and_description_files"
-    results: Dict[str, Any] = {}
-    skipped: Dict[str, str] = {}
+    artifacts_root = (
+        output_dir if output_dir is not None else Path("output")
+    ).resolve() / "logs_and_description_files"
+    results: dict[str, Any] = {}
+    skipped: dict[str, str] = {}
     total = len(contexts)
     context_index = 0
-    active_futures: Dict[Any, str] = {}
+    active_futures: dict[Any, str] = {}
 
     with ThreadPoolExecutor(max_workers=batch_size) as ex:
         # Start initial batch
@@ -1576,7 +1609,8 @@ def move_existing_output_files(target_dir: Path) -> int:
                         file_path.rename(dest_path)
                         moved_count += 1
                     else:
-                        # If destination exists, rename with timestamp from file's last modified time
+                        # If destination exists, rename with timestamp
+                        # from file's last modified time
                         timestamp = timestamp_for_backup_from_file(file_path)
                         suffix = file_path.suffix
                         stem = file_path.stem
@@ -1596,7 +1630,7 @@ def move_existing_output_files(target_dir: Path) -> int:
 # ---------------------------
 # file backup utilities
 # ---------------------------
-def backup_existing_file(file_path: Path) -> Optional[Path]:
+def backup_existing_file(file_path: Path) -> Path | None:
     """Backup an existing file by renaming it with a timestamp.
 
     Args:
@@ -1647,9 +1681,7 @@ def backup_output_files(
 # ---------------------------
 # exports & pretty print
 # ---------------------------
-def collect_rows(
-    results: Dict[str, Any], time_range_str: str = "1d"
-) -> List[Dict[str, str]]:
+def collect_rows(results: dict[str, Any], time_range_str: str = "1d") -> list[dict[str, str]]:
     """
     Collect all rows from results dictionary.
 
@@ -1665,11 +1697,7 @@ def collect_rows(
             for pod_name, info in pods.items():
                 desc = info.get("description_file", "")
                 plog = info.get("pod_log_file", "")
-                sources = (
-                    ";".join(info.get("sources", []))
-                    if info.get("sources")
-                    else ""
-                )
+                sources = ";".join(info.get("sources", [])) if info.get("sources") else ""
                 application = info.get("application", "")
                 component = info.get("component", "")
                 # OOM rows
@@ -1699,9 +1727,7 @@ def collect_rows(
                             "type": "CrashLoopBackOff",
                             "application": application,
                             "component": component,
-                            "timestamps": ";".join(
-                                info.get("crash_timestamps")
-                            ),
+                            "timestamps": ";".join(info.get("crash_timestamps")),
                             "sources": sources,
                             "description_file": desc,
                             "pod_log_file": plog,
@@ -1710,7 +1736,7 @@ def collect_rows(
                     )
 
     # Sort: OOMKilled first, then CrashLoopBackOff
-    def sort_key(row: Dict[str, str]) -> Tuple[int, str, str, str]:
+    def sort_key(row: dict[str, str]) -> tuple[int, str, str, str]:
         type_val = row.get("type", "")
         if type_val == "OOMKilled":
             return (
@@ -1738,7 +1764,7 @@ def collect_rows(
     return rows
 
 
-def export_table(rows: List[Dict[str, str]], table_path: Path) -> None:
+def export_table(rows: list[dict[str, str]], table_path: Path) -> None:
     """Export rows to a table-formatted file."""
     if not rows:
         return
@@ -1796,20 +1822,20 @@ def export_table(rows: List[Dict[str, str]], table_path: Path) -> None:
     try:
         table_path.write_text("\n".join(lines))
         print(color(f"Table written → {table_path}", GREEN))
-    except (IOError, OSError) as e:
+    except OSError as e:
         logging.error(f"Failed to write table file {table_path}: {e}")
         print(color(f"ERROR: Failed to write table file: {e}", RED))
 
 
 def export_results(
-    results: Dict[str, Any],
+    results: dict[str, Any],
     json_path: Path,
     csv_path: Path,
     table_path: Path,
-    html_path: Optional[Path] = None,
+    html_path: Path | None = None,
     time_range_str: str = "1d",
-    output_dir: Optional[Path] = None,
-    plot_range_seconds: Optional[int] = None,
+    output_dir: Path | None = None,
+    plot_range_seconds: int | None = None,
     plot_range_str: str = "2M",
 ) -> None:
     """Export results to JSON, CSV, TABLE, and HTML files."""
@@ -1822,7 +1848,7 @@ def export_results(
     try:
         json_path.write_text(json.dumps(results_with_metadata, indent=2))
         print(color(f"JSON written → {json_path}", GREEN))
-    except (IOError, OSError) as e:
+    except OSError as e:
         logging.error(f"Failed to write JSON file {json_path}: {e}")
         print(color(f"ERROR: Failed to write JSON file: {e}", RED))
 
@@ -1862,7 +1888,7 @@ def export_results(
                     ]
                 )
         print(color(f"CSV written → {csv_path}", GREEN))
-    except (IOError, OSError) as e:
+    except OSError as e:
         logging.error(f"Failed to write CSV file {csv_path}: {e}")
         print(color(f"ERROR: Failed to write CSV file: {e}", RED))
 
@@ -1876,8 +1902,12 @@ def export_results(
             historical_series_by_cluster = {}
             historical_html_links = []
             if output_dir is not None and plot_range_seconds is not None:
-                historical_series = build_historical_series_from_output_dir(output_dir, plot_range_seconds)
-                historical_series_by_cluster = build_historical_series_by_cluster_from_output_dir(output_dir, plot_range_seconds)
+                historical_series = build_historical_series_from_output_dir(
+                    output_dir, plot_range_seconds
+                )
+                historical_series_by_cluster = build_historical_series_by_cluster_from_output_dir(
+                    output_dir, plot_range_seconds
+                )
             if output_dir is not None:
                 historical_html_links = get_historical_html_links(output_dir)
             generate_html_report(
@@ -1899,7 +1929,7 @@ def export_results(
         print(color("WARNING: HTML export module not available, skipping HTML generation", YELLOW))
 
 
-def pretty_print(results: Dict[str, Any], skipped: Dict[str, str]) -> None:
+def pretty_print(results: dict[str, Any], skipped: dict[str, str]) -> None:
     for cluster, ns_map in results.items():
         print()
         print(color(f"Cluster: {cluster}", BLUE))
@@ -1910,9 +1940,7 @@ def pretty_print(results: Dict[str, Any], skipped: Dict[str, str]) -> None:
             print(color(f"  Namespace: {ns}", YELLOW))
             for pod_name, info in pods.items():
                 heading_color = (
-                    RED
-                    if (info.get("oom_timestamps") or info.get("crash_timestamps"))
-                    else GREEN
+                    RED if (info.get("oom_timestamps") or info.get("crash_timestamps")) else GREEN
                 )
                 print(color(f"    Pod: {pod_name}", heading_color))
                 if info.get("oom_timestamps"):
@@ -1923,14 +1951,10 @@ def pretty_print(results: Dict[str, Any], skipped: Dict[str, str]) -> None:
                         print(f"      - CrashLoopBackOff event at: {t}")
                 if not info.get("oom_timestamps") and not info.get("crash_timestamps"):
                     sources_str = ", ".join(info.get("sources", []))
-                    print(
-                        f"      - Detected (no timestamps) via sources: {sources_str}"
-                    )
+                    print(f"      - Detected (no timestamps) via sources: {sources_str}")
                 # print artifacts paths
                 if info.get("description_file") or info.get("pod_log_file"):
-                    print(
-                        f"      - description_file: {info.get('description_file', '')}"
-                    )
+                    print(f"      - description_file: {info.get('description_file', '')}")
                     print(f"      - pod_log_file: {info.get('pod_log_file', '')}")
     if skipped:
         print()
@@ -1968,9 +1992,9 @@ def _pod_base_name(full_name: str) -> str:
 
     # 3. Split by '-' for segment-wise rules (rejoin later)
     segments = name.split("-")
-    out: List[str] = []
+    out: list[str] = []
 
-    for i, seg in enumerate(segments):
+    for _i, seg in enumerate(segments):
         if not seg:
             out.append(seg)
             continue
@@ -1978,9 +2002,11 @@ def _pod_base_name(full_name: str) -> str:
         if "." in seg:
             out.append(seg)
             continue
-        # Short word + long alnum (e.g. op41130..., observ1b4c..., pullca107...) -> word only (check before long-hash)
+        # Short word + long alnum (e.g. op41130..., observ1b4c..., pullca107...)
+        # -> word only (check before long-hash)
         if len(seg) > 10 and seg.isalnum():
-            # Try known CI/word prefixes first (so "pull" wins over "pullca"); no "pu" so pu<hash> -> *
+            # Try known CI/word prefixes first (so "pull" wins over
+            # "pullca"); no "pu" so pu<hash> -> *
             for prefix in ("pull", "reque", "observ", "op", "midstream", "on"):
                 if seg.startswith(prefix) and len(seg) > len(prefix) + 12:
                     out.append(prefix)
@@ -1995,7 +2021,8 @@ def _pod_base_name(full_name: str) -> str:
                         break
                 if word_len >= 2 and word_len < len(seg) and len(seg) - word_len >= 12:
                     word = seg[:word_len]
-                    # "pu" + long hash -> * so trailing -* gets dropped (e.g. cloudwatch-aggregator-on)
+                    # "pu" + long hash -> * so trailing -* gets
+                    # dropped (e.g. cloudwatch-aggregator-on)
                     if word == "pu" and len(seg) - word_len >= 20:
                         out.append("*")
                     else:
@@ -2021,7 +2048,7 @@ def _pod_base_name(full_name: str) -> str:
         out.append(seg)
 
     # 4. Collapse consecutive '*' into one
-    collapsed: List[str] = []
+    collapsed: list[str] = []
     for s in out:
         if s == "*" and collapsed and collapsed[-1] == "*":
             continue
@@ -2030,7 +2057,7 @@ def _pod_base_name(full_name: str) -> str:
 
     # 5. Drop trailing lone '*' or *-only suffix (e.g. odh-midstream-* -> odh-midstream)
     while result.endswith("-*") and result.count("-") > 1:
-        result = result[: -2]
+        result = result[:-2]
 
     # 6. Classic ReplicaSet: <name>-<hash>-<suffix> if we still have *-* at end, keep one *
     if result.endswith("-*-*"):
@@ -2040,14 +2067,34 @@ def _pod_base_name(full_name: str) -> str:
     if result.endswith("-pod") and result.count("-") > 1:
         result = result[:-4]
 
-    # 8. Trailing short random-looking segment (5-8 alnum, e.g. -wzpwf, -bjcvs) -> * (keep words like verify, apply)
+    # 8. Trailing short random-looking segment (5-8 alnum, e.g. -wzpwf, -bjcvs)
+    # -> * (keep words like verify, apply)
     _keep_trailing = frozenset(
-        ("verify", "apply", "build", "push", "pull", "scan", "test", "tags", "pod", "run",
-         "tekton", "check", "observ", "dependencies", "unicode")
+        (
+            "verify",
+            "apply",
+            "build",
+            "push",
+            "pull",
+            "scan",
+            "test",
+            "tags",
+            "pod",
+            "run",
+            "tekton",
+            "check",
+            "observ",
+            "dependencies",
+            "unicode",
+        )
     )
     while result.count("-") >= 1:
         last_part = result.rsplit("-", 1)[-1]
-        if 5 <= len(last_part) <= 8 and last_part.isalnum() and last_part.lower() not in _keep_trailing:
+        if (
+            5 <= len(last_part) <= 8
+            and last_part.isalnum()
+            and last_part.lower() not in _keep_trailing
+        ):
             result = result[: -len(last_part) - 1] + "-*"
             while result.endswith("-*") and result.count("-") > 1:
                 result = result[:-2]
@@ -2057,7 +2104,7 @@ def _pod_base_name(full_name: str) -> str:
     return result if result else full_name
 
 
-def _match_string_for_bundle_generator(pod_names: List[str]) -> str:
+def _match_string_for_bundle_generator(pod_names: list[str]) -> str:
     """
     Return a substring that matches all given pod names in CSV column 3.
     oom_logs_and_desc_bundle_generator uses index($3, pod) > 0, so we need a
@@ -2071,7 +2118,7 @@ def _match_string_for_bundle_generator(pod_names: List[str]) -> str:
     prefix = pod_names[0]
     for name in pod_names[1:]:
         i = 0
-        for a, b in zip(prefix, name):
+        for a, b in zip(prefix, name, strict=False):
             if a != b:
                 break
             i += 1
@@ -2080,7 +2127,7 @@ def _match_string_for_bundle_generator(pod_names: List[str]) -> str:
     return prefix.rstrip("-") if prefix else pod_names[0]
 
 
-def _date_from_timestamped_csv_basename(basename: str) -> Optional[str]:
+def _date_from_timestamped_csv_basename(basename: str) -> str | None:
     """Extract DD-Mon-YYYY from oom_results_DD-Mon-YYYY_*.csv. Returns None if not matched."""
     if not basename.startswith("oom_results_") or not basename.endswith(".csv"):
         return None
@@ -2089,12 +2136,14 @@ def _date_from_timestamped_csv_basename(basename: str) -> Optional[str]:
     return m.group(1) if m else None
 
 
-def _label_from_timestamped_csv_basename(basename: str) -> Optional[str]:
+def _label_from_timestamped_csv_basename(basename: str) -> str | None:
     """Extract display label DD-Mon-YYYY HH:MM from oom_results_DD-Mon-YYYY_HH-MM-SS-TZ.csv."""
     if not basename.startswith("oom_results_") or not basename.endswith(".csv"):
         return None
     # oom_results_03-Feb-2026_12-04-19-EDT.csv -> 03-Feb-2026 12:04
-    m = re.match(r"oom_results_(\d{2}-[A-Za-z]{3}-\d{4})_(\d{2})-(\d{2})-(\d{2})-[^.]*\.csv", basename)
+    m = re.match(
+        r"oom_results_(\d{2}-[A-Za-z]{3}-\d{4})_(\d{2})-(\d{2})-(\d{2})-[^.]*\.csv", basename
+    )
     if not m:
         return _date_from_timestamped_csv_basename(basename)  # fallback to date only
     return f"{m.group(1)} {m.group(2)}:{m.group(3)}"
@@ -2102,13 +2151,26 @@ def _label_from_timestamped_csv_basename(basename: str) -> Optional[str]:
 
 # Month abbreviation to number (locale-independent for DD-Mon-YYYY in filenames)
 _MONTH_ABBR_TO_NUM = {
-    "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
-    "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12,
+    "jan": 1,
+    "feb": 2,
+    "mar": 3,
+    "apr": 4,
+    "may": 5,
+    "jun": 6,
+    "jul": 7,
+    "aug": 8,
+    "sep": 9,
+    "oct": 10,
+    "nov": 11,
+    "dec": 12,
 }
 
 
-def _run_date_from_timestamped_csv_basename(basename: str) -> Optional[date]:
-    """Parse run date (DD-Mon-YYYY) from filename to a date for filtering/sorting. Locale-independent."""
+def _run_date_from_timestamped_csv_basename(basename: str) -> date | None:
+    """Parse run date (DD-Mon-YYYY) from filename to a date.
+
+    For filtering/sorting. Locale-independent.
+    """
     date_str = _date_from_timestamped_csv_basename(basename)
     if not date_str:
         return None
@@ -2130,7 +2192,7 @@ def _run_date_from_timestamped_csv_basename(basename: str) -> Optional[date]:
 def build_historical_series_from_output_dir(
     output_dir: Path,
     plot_range_seconds: int,
-) -> List[Tuple[str, int, int]]:
+) -> list[tuple[str, int, int]]:
     """
     Build historical (label, oom_count, crash_count) from timestamped CSVs in output_dir,
     plus the current run from oom_results.csv if present (so today's run appears on the graph).
@@ -2138,14 +2200,14 @@ def build_historical_series_from_output_dir(
     Cutoff is relative to the **latest run in the directory** (not "now"). Sorted by run date.
     """
     resolved_dir = output_dir.resolve()
-    series: List[Tuple[str, int, int, date]] = []
+    series: list[tuple[str, int, int, date]] = []
     # 1) Timestamped backup CSVs
     files = sorted(resolved_dir.glob("oom_results_*_*.csv"))
     for path in files:
         try:
             run_date = _run_date_from_timestamped_csv_basename(path.name)
             if run_date is None:
-                run_date = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc).date()
+                run_date = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC).date()
             label = _label_from_timestamped_csv_basename(path.name) or path.name
             oom, crash = 0, 0
             with path.open(newline="", encoding="utf-8", errors="replace") as f:
@@ -2165,8 +2227,10 @@ def build_historical_series_from_output_dir(
     if main_csv.is_file():
         try:
             mtime = main_csv.stat().st_mtime
-            run_date = datetime.fromtimestamp(mtime, tz=timezone.utc).date()
-            label = datetime.fromtimestamp(mtime).strftime("%d-%b-%Y %H:%M")  # local time for display
+            run_date = datetime.fromtimestamp(mtime, tz=UTC).date()
+            label = datetime.fromtimestamp(mtime).strftime(
+                "%d-%b-%Y %H:%M"
+            )  # local time for display
             oom, crash = 0, 0
             with main_csv.open(newline="", encoding="utf-8", errors="replace") as f:
                 reader = csv.DictReader(f)
@@ -2183,9 +2247,14 @@ def build_historical_series_from_output_dir(
         return []
     # Cutoff relative to latest run in this directory (avoids dependence on system clock)
     latest = max(run_d for (_, _, _, run_d) in series)
-    cutoff_ts = datetime.combine(latest, datetime.min.time()).replace(tzinfo=timezone.utc).timestamp() - plot_range_seconds
-    cutoff_date = datetime.fromtimestamp(cutoff_ts, tz=timezone.utc).date()
-    series = [(label, oom, crash, run_d) for (label, oom, crash, run_d) in series if run_d >= cutoff_date]
+    cutoff_ts = (
+        datetime.combine(latest, datetime.min.time()).replace(tzinfo=UTC).timestamp()
+        - plot_range_seconds
+    )
+    cutoff_date = datetime.fromtimestamp(cutoff_ts, tz=UTC).date()
+    series = [
+        (label, oom, crash, run_d) for (label, oom, crash, run_d) in series if run_d >= cutoff_date
+    ]
     series.sort(key=lambda x: (x[3], x[0]))
     return [(label, oom, crash) for label, oom, crash, _ in series]
 
@@ -2193,7 +2262,7 @@ def build_historical_series_from_output_dir(
 def build_historical_series_by_cluster_from_output_dir(
     output_dir: Path,
     plot_range_seconds: int,
-) -> Dict[str, List[Tuple[str, int, int]]]:
+) -> dict[str, list[tuple[str, int, int]]]:
     """
     Build per-cluster historical (label, oom_count, crash_count) from timestamped CSVs.
     Same cutoff logic as build_historical_series_from_output_dir. Returns dict cluster -> list
@@ -2202,14 +2271,14 @@ def build_historical_series_by_cluster_from_output_dir(
     resolved_dir = output_dir.resolve()
     files = sorted(resolved_dir.glob("oom_results_*_*.csv"))
     # Collect per (run_date, label) per-cluster counts
-    run_data: List[Tuple[str, date, Dict[str, Tuple[int, int]]]] = []
+    run_data: list[tuple[str, date, dict[str, tuple[int, int]]]] = []
     for path in files:
         try:
             run_date = _run_date_from_timestamped_csv_basename(path.name)
             if run_date is None:
-                run_date = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc).date()
+                run_date = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC).date()
             label = _label_from_timestamped_csv_basename(path.name) or path.name
-            cluster_counts: Dict[str, Tuple[int, int]] = {}
+            cluster_counts: dict[str, tuple[int, int]] = {}
             with path.open(newline="", encoding="utf-8", errors="replace") as f:
                 reader = csv.DictReader(f)
                 for row in reader:
@@ -2232,8 +2301,10 @@ def build_historical_series_by_cluster_from_output_dir(
     if main_csv.is_file():
         try:
             mtime = main_csv.stat().st_mtime
-            run_date = datetime.fromtimestamp(mtime, tz=timezone.utc).date()
-            label = datetime.fromtimestamp(mtime).strftime("%d-%b-%Y %H:%M")  # local time for display
+            run_date = datetime.fromtimestamp(mtime, tz=UTC).date()
+            label = datetime.fromtimestamp(mtime).strftime(
+                "%d-%b-%Y %H:%M"
+            )  # local time for display
             cluster_counts = {}
             with main_csv.open(newline="", encoding="utf-8", errors="replace") as f:
                 reader = csv.DictReader(f)
@@ -2254,10 +2325,13 @@ def build_historical_series_by_cluster_from_output_dir(
     if not run_data:
         return {}
     latest = max(rd[1] for rd in run_data)
-    cutoff_ts = datetime.combine(latest, datetime.min.time()).replace(tzinfo=timezone.utc).timestamp() - plot_range_seconds
-    cutoff_date = datetime.fromtimestamp(cutoff_ts, tz=timezone.utc).date()
+    cutoff_ts = (
+        datetime.combine(latest, datetime.min.time()).replace(tzinfo=UTC).timestamp()
+        - plot_range_seconds
+    )
+    cutoff_date = datetime.fromtimestamp(cutoff_ts, tz=UTC).date()
     # Build cluster -> list of (label, oom, crash) for runs in range
-    by_cluster: Dict[str, List[Tuple[str, int, int, date]]] = {}
+    by_cluster: dict[str, list[tuple[str, int, int, date]]] = {}
     for label, run_date, cluster_counts in run_data:
         if run_date < cutoff_date:
             continue
@@ -2273,19 +2347,19 @@ def build_historical_series_by_cluster_from_output_dir(
     }
 
 
-def get_historical_html_links(output_dir: Path) -> List[Tuple[str, str]]:
+def get_historical_html_links(output_dir: Path) -> list[tuple[str, str]]:
     """
     Return list of (label, filename) for timestamped oom_results_*_*.html in output_dir,
     sorted by run date descending (most recent first). Use relative filename so links work with file://.
     """
     resolved_dir = output_dir.resolve()
-    candidates: List[Tuple[date, str, str]] = []
+    candidates: list[tuple[date, str, str]] = []
     for path in resolved_dir.glob("oom_results_*_*.html"):
         # Reuse CSV basename helpers by pretending .html is .csv for date/label parsing
         fake_csv_name = path.name.replace(".html", ".csv")
         run_date = _run_date_from_timestamped_csv_basename(fake_csv_name)
         if run_date is None:
-            run_date = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc).date()
+            run_date = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC).date()
         label = _label_from_timestamped_csv_basename(fake_csv_name) or path.stem
         candidates.append((run_date, label, path.name))
     candidates.sort(key=lambda x: (x[0], x[1]), reverse=True)
@@ -2302,12 +2376,12 @@ def _normalize_type(t: str) -> str:
     return (t or "").strip()
 
 
-def _read_csv_rows_with_date(csv_path: Path, date_str: str) -> List[Dict[str, str]]:
+def _read_csv_rows_with_date(csv_path: Path, date_str: str) -> list[dict[str, str]]:
     """Read CSV and return list of row dicts with all columns (cluster, namespace, pod, type,
     application, component, timestamps, sources, description_file, pod_log_file, time_range, date).
     Preserves full row so HTML/details table and summaries get all fields. Old CSVs without
     application/component columns get empty strings."""
-    rows: List[Dict[str, str]] = []
+    rows: list[dict[str, str]] = []
     try:
         with csv_path.open(newline="", encoding="utf-8", errors="replace") as f:
             reader = csv.DictReader(f)
@@ -2331,14 +2405,14 @@ def _read_csv_rows_with_date(csv_path: Path, date_str: str) -> List[Dict[str, st
                     "date": date_str,
                 }
                 rows.append(out)
-    except (IOError, OSError) as e:
+    except OSError as e:
         logging.warning(f"Failed to read CSV {csv_path}: {e}")
     return rows
 
 
-def _load_historical_rows_from_output_dir(output_dir: Path) -> List[Dict[str, str]]:
+def _load_historical_rows_from_output_dir(output_dir: Path) -> list[dict[str, str]]:
     """Load rows from all timestamped oom_results_*_*.csv in output_dir (date from filename)."""
-    historical: List[Dict[str, str]] = []
+    historical: list[dict[str, str]] = []
     for path in sorted(output_dir.glob("oom_results_*_*.csv")):
         date_str = _date_from_timestamped_csv_basename(path.name)
         if date_str:
@@ -2353,7 +2427,7 @@ def _cleanup_codeowners_temp_dir() -> None:
         _CODEOWNERS_TEMP_DIR = None
 
 
-def resolve_codeowners_dir(cli_arg: Optional[str]) -> Optional[Path]:
+def resolve_codeowners_dir(cli_arg: str | None) -> Path | None:
     """
     If cli_arg points to an existing directory, use it as konflux-release-data.
     Otherwise shallow-clone KONFLUX_RELEASE_DATA_REPO to a temp directory (cleaned on exit)
@@ -2404,19 +2478,19 @@ def resolve_codeowners_dir(cli_arg: Optional[str]) -> Optional[Path]:
     return Path(tmp)
 
 
-def _get_owners_for_namespace(codeowners_dir: Path, cluster: str, namespace: str) -> List[str]:
+def _get_owners_for_namespace(codeowners_dir: Path, cluster: str, namespace: str) -> list[str]:
     """Get owner @usernames for (cluster, namespace) from CODEOWNERS. Returns list of @user."""
     if not codeowners_dir or not codeowners_dir.is_dir():
         return []
     pattern = f"/tenants-config/cluster/{cluster}/"
-    first_matching_line: Optional[str] = None
+    first_matching_line: str | None = None
     for fname in ("CODEOWNERS", "staging/CODEOWNERS"):
         path = codeowners_dir / fname
         if not path.is_file():
             continue
         try:
             text = path.read_text()
-        except (IOError, OSError):
+        except OSError:
             continue
         for line in text.splitlines():
             line_stripped = line.strip()
@@ -2463,10 +2537,10 @@ def _get_user_display(username: str) -> str:
 
 
 def print_per_pod_summary(
-    current_run_rows: List[Dict[str, str]],
+    current_run_rows: list[dict[str, str]],
     run_date_str: str,
-    output_dir: Optional[Path] = None,
-    codeowners_dir: Optional[Path] = None,
+    output_dir: Path | None = None,
+    codeowners_dir: Path | None = None,
 ) -> None:
     """
     Print a per-pod historical summary (same format as oom_logs_and_desc_bundle_generator).
@@ -2499,7 +2573,7 @@ def print_per_pod_summary(
             continue
 
         # Aggregate by (type, date, cluster, namespace) -> count
-        agg: Dict[Tuple[str, str, str, str], int] = defaultdict(int)
+        agg: dict[tuple[str, str, str, str], int] = defaultdict(int)
         for row in matching:
             t = (row.get("type") or "").strip() or "OOMKilled"
             if t not in ("OOMKilled", "CrashLoopBackOff"):
@@ -2513,16 +2587,12 @@ def print_per_pod_summary(
         print("==============================================")
 
         for event_type in ("OOMKilled", "CrashLoopBackOff"):
-            keys_for_type = [
-                (t, d, c, ns)
-                for (t, d, c, ns) in agg
-                if t == event_type
-            ]
+            keys_for_type = [(t, d, c, ns) for (t, d, c, ns) in agg if t == event_type]
             if not keys_for_type:
                 print(f"{event_type}: 0 instances (no occurrences in date-wise CSVs)")
                 continue
             # Sort by date, then cluster, then namespace
-            for (_, date_key, cluster, namespace) in sorted(
+            for _, date_key, cluster, namespace in sorted(
                 keys_for_type, key=lambda x: (x[1], x[2], x[3])
             ):
                 count = agg[(event_type, date_key, cluster, namespace)]
@@ -2546,8 +2616,8 @@ def print_per_pod_summary(
 # ---------------------------
 # global patterns and flags (populated in parse_args)
 # ---------------------------
-_INCLUDE_PATTERNS: Optional[List[Pattern]] = None
-_EXCLUDE_PATTERNS: Optional[List[Pattern]] = None
+_INCLUDE_PATTERNS: list[Pattern] | None = None
+_EXCLUDE_PATTERNS: list[Pattern] | None = None
 _VERBOSE: bool = False
 _LIST_NAMESPACES: bool = False
 
@@ -2611,21 +2681,29 @@ Output:
   running oom_logs_and_desc_bundle_generator -p <pod> -d <output> for each pod).
   Use --no-tarballs to skip tarball generation.
 
-  -c, --codeowners-dir DIR  Path to an existing konflux-release-data checkout. If omitted, the
-                            script shallow-clones releng/konflux-release-data to a temp dir (requires
-                            git + network/SSH). Per-pod summary shows owner (name + email via glab).
+  -c, --codeowners-dir DIR  Path to an existing konflux-release-data
+                            checkout. If omitted, the script shallow-clones
+                            releng/konflux-release-data to a temp dir
+                            (requires git + network/SSH). Per-pod summary
+                            shows owner (name + email via glab).
 
-  --no-tarballs            Do not generate per-pod tarballs after the run (default: generate tarballs).
+  --no-tarballs            Do not generate per-pod tarballs after the
+                           run (default: generate tarballs).
 
 Debug & Troubleshooting:
   -v, --verbose            Show which namespaces are scanned or skipped (ephemeral/include/exclude)
-  --list-namespaces        Print namespaces that would be scanned (per context) and exit.
-                           Use to verify a namespace (e.g. preflight-dev-tenant) is included.
+  --list-namespaces        Print namespaces that would be scanned
+                           (per context) and exit. Use to verify a
+                           namespace (e.g. preflight-dev-tenant) is
+                           included.
 
 Testing (no cluster run):
-  --print-summary-from-dir [DIR]  Print per-pod summary and generate oom_results.html from existing
-                                   CSVs in DIR (default: output). No cluster run. Uses oom_results.csv
-                                   as \"current run\" and oom_results_*_*.csv for historical graph.
+  --print-summary-from-dir [DIR]  Print per-pod summary and generate
+                                   oom_results.html from existing CSVs in
+                                   DIR (default: output). No cluster run.
+                                   Uses oom_results.csv as \"current run\"
+                                   and oom_results_*_*.csv for historical
+                                   graph.
 
 Other:
   -h, --help               Show this help message
@@ -2675,7 +2753,7 @@ Examples:
     sys.exit(1)
 
 
-def compile_patterns(csv_patterns: Optional[str]) -> Optional[List[Pattern]]:
+def compile_patterns(csv_patterns: str | None) -> list[Pattern] | None:
     if not csv_patterns:
         return None
     parts = [p.strip() for p in csv_patterns.split(",") if p.strip()]
@@ -2689,13 +2767,29 @@ def compile_patterns(csv_patterns: Optional[str]) -> Optional[List[Pattern]]:
 
 
 def parse_args(
-    argv: List[str],
-) -> Tuple[List[str], int, int, int, int, Optional[int], str, int, str, bool, bool, bool, Optional[str], Optional[str], str]:
+    argv: list[str],
+) -> tuple[
+    list[str],
+    int,
+    int,
+    int,
+    int,
+    int | None,
+    str,
+    int,
+    str,
+    bool,
+    bool,
+    bool,
+    str | None,
+    str | None,
+    str,
+]:
     args = list(argv)
     if "--help" in args or "-h" in args:
         print_usage_and_exit()
 
-    contexts: List[str] = []
+    contexts: list[str] = []
     batch_size = DEFAULT_BATCH_SIZE
     ns_batch_size = DEFAULT_NS_BATCH_SIZE
     ns_workers = DEFAULT_NS_WORKERS
@@ -2708,8 +2802,8 @@ def parse_args(
     exclude_ephemeral = True  # Default: exclude ephemeral namespaces
     verbose = False
     list_namespaces = False
-    codeowners_dir: Optional[str] = None
-    print_summary_from_dir: Optional[str] = None
+    codeowners_dir: str | None = None
+    print_summary_from_dir: str | None = None
     output_dir_str = "output"
     no_tarballs = "--no-tarballs" in args
 
@@ -2728,9 +2822,7 @@ def parse_args(
             print_summary_from_dir = output_dir_str
 
     if "--current" in args:
-        cur = get_current_context(
-            retries=retries, oc_timeout_seconds=oc_timeout_seconds
-        )
+        cur = get_current_context(retries=retries, oc_timeout_seconds=oc_timeout_seconds)
         if cur:
             contexts = [cur]
     elif "--contexts" in args:
@@ -2754,9 +2846,7 @@ def parse_args(
             sys.exit(1)
         contexts = match_contexts_by_substring(context_substrings, available_contexts)
     else:
-        contexts = get_all_contexts(
-            retries=retries, oc_timeout_seconds=oc_timeout_seconds
-        )
+        contexts = get_all_contexts(retries=retries, oc_timeout_seconds=oc_timeout_seconds)
 
     if "--batch" in args:
         i = args.index("--batch")
@@ -2955,26 +3045,41 @@ def main() -> None:
             out_dir = p.resolve()
         main_csv = out_dir / "oom_results.csv"
         if not main_csv.is_file():
-            print(color(f"ERROR: {main_csv} not found. Run oc_get_ooms.py first to generate CSVs.", RED))
+            print(
+                color(
+                    f"ERROR: {main_csv} not found. Run oc_get_ooms.py first to generate CSVs.", RED
+                )
+            )
             sys.exit(1)
         mtime = main_csv.stat().st_mtime
         run_date_str = datetime.fromtimestamp(mtime).strftime("%d-%b-%Y")
         current_run_rows = _read_csv_rows_with_date(main_csv, run_date_str)
         codeowners_path = resolve_codeowners_dir(codeowners_dir)
         print_per_pod_summary(
-            current_run_rows, run_date_str,
+            current_run_rows,
+            run_date_str,
             output_dir=out_dir,
             codeowners_dir=codeowners_path,
         )
         # Generate oom_results.html from existing data (graph + summary + detailed findings)
         if generate_html_report is not None:
             historical_series = build_historical_series_from_output_dir(out_dir, plot_range_seconds)
-            historical_series_by_cluster = build_historical_series_by_cluster_from_output_dir(out_dir, plot_range_seconds)
+            historical_series_by_cluster = build_historical_series_by_cluster_from_output_dir(
+                out_dir, plot_range_seconds
+            )
             historical_html_links = get_historical_html_links(out_dir)
             if historical_series:
-                print(color(f"Historical graph: {len(historical_series)} run(s) in plot range.", BLUE))
+                print(
+                    color(f"Historical graph: {len(historical_series)} run(s) in plot range.", BLUE)
+                )
             else:
-                print(color("Historical graph: no timestamped runs in plot range (oom_results_*_*.csv).", YELLOW))
+                print(
+                    color(
+                        "Historical graph: no timestamped runs in plot range"
+                        " (oom_results_*_*.csv).",
+                        YELLOW,
+                    )
+                )
             html_path = out_dir / "oom_results.html"
             try:
                 generate_html_report(
@@ -3009,7 +3114,9 @@ def main() -> None:
                 exclude_ephemeral=exclude_ephemeral,
             )
             cluster = short_cluster_name(ctx)
-            print(color(f"Context: {ctx} (cluster: {cluster}) — {len(namespaces)} namespaces", BLUE))
+            print(
+                color(f"Context: {ctx} (cluster: {cluster}) — {len(namespaces)} namespaces", BLUE)
+            )
             for ns in sorted(namespaces):
                 print(ns)
         sys.exit(0)
@@ -3032,7 +3139,8 @@ def main() -> None:
     if exclude_ephemeral:
         print(
             color(
-                "Ephemeral namespaces: EXCLUDED (ephemeral test/cluster namespaces will be skipped)",
+                "Ephemeral namespaces: EXCLUDED"
+                " (ephemeral test/cluster namespaces will be skipped)",
                 BLUE,
             )
         )
@@ -3120,7 +3228,9 @@ def main() -> None:
 
     print(
         color(
-            "\nPer-cluster logs written to output/logs_and_description_files/<cluster>/ (if any findings were found)",
+            "\nPer-cluster logs written to"
+            " output/logs_and_description_files/<cluster>/"
+            " (if any findings were found)",
             GREEN,
         )
     )
@@ -3138,19 +3248,23 @@ def main() -> None:
         row["date"] = run_date_str
     codeowners_path = resolve_codeowners_dir(codeowners_dir)
     print_per_pod_summary(
-        current_run_rows, run_date_str,
+        current_run_rows,
+        run_date_str,
         output_dir=output_dir,
         codeowners_dir=codeowners_path,
     )
 
-    # Generate per-pod tarballs (same as oom_logs_and_desc_bundle_generator -p <pod> -d <output> for each pod)
-    # The bundle generator matches CSV pod column by substring; we must pass a literal that appears in
+    # Generate per-pod tarballs (same as oom_logs_and_desc_bundle_generator
+    # -p <pod> -d <output> for each pod).
+    # The bundle generator matches CSV pod column by substring; we must
+    # pass a literal that appears in
     # actual pod names (not the display base name like "apiserver-*" which has asterisks).
     if not no_tarballs and current_run_rows:
         script_dir = Path(__file__).resolve().parent
         bundle_gen = script_dir / "oom_logs_and_desc_bundle_generator"
-        # Group full pod names by display base_name, then compute a match string (longest common prefix)
-        base_to_pods: Dict[str, List[str]] = defaultdict(list)
+        # Group full pod names by display base_name, then compute a
+        # match string (longest common prefix)
+        base_to_pods: dict[str, list[str]] = defaultdict(list)
         for row in current_run_rows:
             base_to_pods[_pod_base_name(row["pod"])].append(row["pod"])
         if bundle_gen.is_file():
@@ -3164,14 +3278,22 @@ def main() -> None:
                 cmd = [
                     "bash",
                     str(bundle_gen),
-                    "-p", match_str,
-                    "-d", str(output_dir),
+                    "-p",
+                    match_str,
+                    "-d",
+                    str(output_dir),
                 ]
                 if codeowners_path is not None and codeowners_path.is_dir():
                     cmd.extend(["-c", str(codeowners_path)])
                 rc = subprocess.run(cmd, cwd=str(script_dir))
                 if rc.returncode != 0:
-                    print(color(f"  Warning: tarball generation for pod '{base_name}' exited with {rc.returncode}", YELLOW))
+                    print(
+                        color(
+                            f"  Warning: tarball generation for pod"
+                            f" '{base_name}' exited with {rc.returncode}",
+                            YELLOW,
+                        )
+                    )
         else:
             print(color(f"  Skipping tarballs: {bundle_gen} not found", YELLOW))
 

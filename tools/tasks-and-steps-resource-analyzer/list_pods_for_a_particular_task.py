@@ -17,10 +17,7 @@ headers = {
     "Authorization": f"Bearer {token}",
 }
 params = {
-    "query": (
-        "kube_pod_labels"
-        f'{{label_tekton_dev_task="{task_name}",namespace=~".*-tenant"}}'
-    ),
+    "query": (f'kube_pod_labels{{label_tekton_dev_task="{task_name}",namespace=~".*-tenant"}}'),
     "step": 15 * last_num_days,
     "start": end_time_in_secs - (last_num_days * 24 * 60 * 60),
     "end": end_time_in_secs,

@@ -64,9 +64,7 @@ else:
     params = {"query": query}
 
 try:
-    response = requests.get(
-        url, headers=headers, params=params, verify=False, timeout=30
-    )
+    response = requests.get(url, headers=headers, params=params, verify=False, timeout=30)
 except Exception as exc:
     print(json.dumps({"error": f"request failed: {exc}"}))
     sys.exit(0)
@@ -84,12 +82,11 @@ debug_mode = os.environ.get("DEBUG_COMPONENT_LOOKUP") == "1"
 if not data:
     # Check if there's an error in the response
     error_info = response_data.get("error")
-    if error_info:
-        if debug_mode:
-            print(
-                f"DEBUG: Prometheus query error for pod {pod}: {error_info}",
-                file=sys.stderr,
-            )
+    if error_info and debug_mode:
+        print(
+            f"DEBUG: Prometheus query error for pod {pod}: {error_info}",
+            file=sys.stderr,
+        )
     # No data found - pod might not exist or query returned empty
     if debug_mode:
         print(
@@ -142,8 +139,7 @@ if not data:
     if not data:
         if debug_mode:
             print(
-                f"DEBUG: No data found for pod {pod} after all attempts. "
-                f"Query was: {query}",
+                f"DEBUG: No data found for pod {pod} after all attempts. Query was: {query}",
                 file=sys.stderr,
             )
         print(json.dumps({"component": "N/A", "application": "N/A", "pod": pod}))
@@ -151,12 +147,9 @@ if not data:
 
 # Get the first result's metric (handles both instant and range query formats)
 if isinstance(data, list) and len(data) > 0:
-    if isinstance(data[0], dict):
-        # Range query: data[0] = {"metric": {...}, "values": [[ts, val], ...]}
-        # Instant query: data[0] = {"metric": {...}, "value": [ts, val]}
-        metric = data[0].get("metric", {})
-    else:
-        metric = {}
+    # Range query: data[0] = {"metric": {...}, "values": [[ts, val], ...]}
+    # Instant query: data[0] = {"metric": {...}, "value": [ts, val]}
+    metric = data[0].get("metric", {}) if isinstance(data[0], dict) else {}
 else:
     metric = {}
 
@@ -172,10 +165,7 @@ if debug_mode:
     relevant_labels = {
         k: v
         for k, v in metric.items()
-        if any(
-            keyword in k.lower()
-            for keyword in ["component", "application", "app", "label"]
-        )
+        if any(keyword in k.lower() for keyword in ["component", "application", "app", "label"])
     }
     if relevant_labels:
         print(
@@ -238,8 +228,7 @@ application = first_present(metric, application_keys)
 # Debug output if enabled
 if os.environ.get("DEBUG_COMPONENT_LOOKUP") == "1":
     print(
-        f"DEBUG: Found component='{component}', "
-        f"application='{application}' for pod {pod}",
+        f"DEBUG: Found component='{component}', application='{application}' for pod {pod}",
         file=sys.stderr,
     )
 

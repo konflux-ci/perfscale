@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 import sys
+import time
+
 import requests
 import urllib3
-import time
 
 urllib3.disable_warnings()
 
@@ -39,6 +40,8 @@ params = {
 }
 
 t0 = time.time()
-resp = requests.get(url, headers=headers, params=params, verify=False, timeout=900)  # 15 minutes timeout
+resp = requests.get(
+    url, headers=headers, params=params, verify=False, timeout=900
+)  # 15 minutes timeout
 resp.raise_for_status()
 print(resp.text)
