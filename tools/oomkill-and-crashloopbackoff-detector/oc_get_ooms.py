@@ -1119,7 +1119,7 @@ def is_artifact_meaningful(content: str) -> bool:
     # Stage 1: Size-based heuristic
     # If content is larger than 2KB, it's likely meaningful (not just an error message)
     MEANINGFUL_SIZE_THRESHOLD = 2048  # 2KB
-    content_size = len(content.encode('utf-8'))
+    content_size = len(content.encode("utf-8"))
 
     if content_size >= MEANINGFUL_SIZE_THRESHOLD:
         return True
@@ -1127,7 +1127,7 @@ def is_artifact_meaningful(content: str) -> bool:
     # Stage 2: Pattern matching for small content (< 2KB)
     # Only apply strict error pattern checks on small files
     lower = content.lower()
-    lines = content.strip().split('\n')
+    lines = content.strip().split("\n")
     num_lines = len(lines)
 
     # Small files (< 10 lines) with specific 'oc' error patterns are likely not meaningful
@@ -1408,12 +1408,14 @@ def query_context(
                                 try:
                                     desc_content = Path(desc_file).read_text()
                                     log_content = Path(log_file).read_text()
-                                    if not is_artifact_meaningful(desc_content) or not is_artifact_meaningful(log_content):
+                                    if not is_artifact_meaningful(
+                                        desc_content
+                                    ) or not is_artifact_meaningful(log_content):
                                         Path(desc_file).unlink(missing_ok=True)
                                         Path(log_file).unlink(missing_ok=True)
                                         skipped += 1
                                         continue
-                                except Exception:
+                                except Exception:  # nosec B110
                                     pass  # Keep pod if validation fails
                                 info["description_file"] = desc_file
                                 info["pod_log_file"] = log_file

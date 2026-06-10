@@ -3,6 +3,7 @@
 Test cases for is_artifact_meaningful() improvements
 """
 
+
 # Mock the function for testing (copy-paste the improved version)
 def is_artifact_meaningful(content: str) -> bool:
     """
@@ -20,14 +21,14 @@ def is_artifact_meaningful(content: str) -> bool:
 
     # Stage 1: Size-based heuristic
     MEANINGFUL_SIZE_THRESHOLD = 2048  # 2KB
-    content_size = len(content.encode('utf-8'))
+    content_size = len(content.encode("utf-8"))
 
     if content_size >= MEANINGFUL_SIZE_THRESHOLD:
         return True
 
     # Stage 2: Pattern matching for small content (< 2KB)
     lower = content.lower()
-    lines = content.strip().split('\n')
+    lines = content.strip().split("\n")
     num_lines = len(lines)
 
     # Small files (< 10 lines) with specific 'oc' error patterns are likely not meaningful
@@ -50,9 +51,9 @@ def is_artifact_meaningful(content: str) -> bool:
 # Test cases
 def test_empty_content():
     """Empty or whitespace-only content should return False"""
-    assert is_artifact_meaningful("") == False
-    assert is_artifact_meaningful("   ") == False
-    assert is_artifact_meaningful("\n\n") == False
+    assert not is_artifact_meaningful("")
+    assert not is_artifact_meaningful("   ")
+    assert not is_artifact_meaningful("\n\n")
     print("✅ Empty content test passed")
 
 
@@ -61,15 +62,15 @@ def test_typical_oc_errors():
 
     # Standard NotFound error
     error1 = 'Error from server (NotFound): pods "my-pod-abc123" not found'
-    assert is_artifact_meaningful(error1) == False
+    assert not is_artifact_meaningful(error1)
 
     # Alternative format
     error2 = 'Error from server: pods "my-pod-xyz789" not found'
-    assert is_artifact_meaningful(error2) == False
+    assert not is_artifact_meaningful(error2)
 
     # With extra whitespace
     error3 = '\nError from server (NotFound): pods "test-pod" not found\n'
-    assert is_artifact_meaningful(error3) == False
+    assert not is_artifact_meaningful(error3)
 
     print("✅ Typical 'oc' errors test passed")
 
@@ -83,7 +84,7 @@ def test_small_meaningful_content():
     [ERROR] Retrying...
     [CRITICAL] OOMKilled - memory limit exceeded
     """
-    assert is_artifact_meaningful(log1) == True
+    assert is_artifact_meaningful(log1)
 
     # Config or status output (8 lines)
     log2 = """
@@ -95,7 +96,7 @@ def test_small_meaningful_content():
     Age: 5h
     Events: <none>
     """
-    assert is_artifact_meaningful(log2) == True
+    assert is_artifact_meaningful(log2)
 
     print("✅ Small meaningful content test passed")
 
@@ -110,8 +111,8 @@ def test_large_content_always_meaningful():
     large_log += "2026-06-03 10:00:11 Processing...\n" * 50
     large_log += "2026-06-03 10:00:20 [ERROR] OOM killed\n"
 
-    assert len(large_log.encode('utf-8')) > 2048, "Test log should be > 2KB"
-    assert is_artifact_meaningful(large_log) == True
+    assert len(large_log.encode("utf-8")) > 2048, "Test log should be > 2KB"
+    assert is_artifact_meaningful(large_log)
 
     print("✅ Large content test passed")
 
@@ -137,9 +138,9 @@ def test_edge_case_not_found_in_meaningful_log():
     [INFO] Exit code: 137
     """
 
-    lines = log.strip().split('\n')
+    lines = log.strip().split("\n")
     assert len(lines) >= 10, "Should have 10+ lines"
-    assert is_artifact_meaningful(log) == True
+    assert is_artifact_meaningful(log)
 
     print("✅ Edge case 'not found' in meaningful log test passed")
 
@@ -153,7 +154,7 @@ Error from server (NotFound): pods "pipeline-run-xyz" not found
 Command: oc logs pipeline-run-xyz -n build-namespace
 """
 
-    assert is_artifact_meaningful(error) == False
+    assert not is_artifact_meaningful(error)
     print("✅ Multi-line oc error test passed")
 
 
@@ -168,18 +169,18 @@ def test_exact_threshold_2kb():
     content_over = "x" * 2049
 
     # All should be meaningful (no error patterns)
-    assert is_artifact_meaningful(content_under) == True
-    assert is_artifact_meaningful(content_exact) == True
-    assert is_artifact_meaningful(content_over) == True
+    assert is_artifact_meaningful(content_under)
+    assert is_artifact_meaningful(content_exact)
+    assert is_artifact_meaningful(content_over)
 
     print("✅ 2KB threshold test passed")
 
 
 def run_all_tests():
     """Run all test cases"""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Testing improved is_artifact_meaningful() function")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     test_empty_content()
     test_typical_oc_errors()
@@ -189,9 +190,9 @@ def run_all_tests():
     test_multi_line_oc_error()
     test_exact_threshold_2kb()
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("✅ All tests passed!")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
 
 if __name__ == "__main__":
