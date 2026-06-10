@@ -15,6 +15,6 @@ jobs:
       - name: Bootstrap
         run: |
           make bootstrap
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Run checks
         run: make check-all

@@ -4,7 +4,7 @@ set -eu -o pipefail
 #set -x
 
 function log() {
-    echo "$( date -u ) INFO ${@}"
+    echo "$( date -u ) INFO ${*}"
 }
 
 function cluster_urls() {
@@ -20,7 +20,7 @@ function cluster_urls() {
         exit 1
     fi
 
-    row_array=($row)
+    read -r -a row_array <<< "$row"
     console_url="${row_array[1]}"
     if [[ "${#row_array[@]}" -eq 2 ]]; then
         api_url="$( echo "${console_url}" | sed -e "s|://console-openshift-console\.apps|://api|" -e "s|/$|:6443/|" )"
@@ -90,7 +90,7 @@ case $cluster in
             log "Cluster '${cluster}' unknown. Try 'list'."
             exit 1
         fi
-        cluster_info=($( cluster_urls "$cluster" ))
+        read -r -a cluster_info <<< "$( cluster_urls "$cluster" )"
         cluster_console="${cluster_info[0]}"
         cluster_api="${cluster_info[1]}"
         log "Logging to '$cluster' console '$cluster_console' api '$cluster_api'"

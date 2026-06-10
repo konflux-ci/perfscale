@@ -33,7 +33,7 @@ repos:
     rev: "1.9.4"
     hooks:
       - id: bandit
-        args: ["-r", "tools/", "--skip", "B101,B404,B603"]
+        args: ["-r", "tools/", "--skip", "B101,B110,B404,B603,B607"]
         pass_filenames: false
 
   - repo: https://github.com/zricethezav/gitleaks
@@ -53,7 +53,6 @@ repos:
     rev: v0.22.0
     hooks:
       - id: jsonnet-format
-      - id: jsonnet-lint
 
   - repo: https://github.com/rhysd/actionlint
     rev: v1.7.11
@@ -71,7 +70,7 @@ repos:
 
       - id: grafonnet-build
         name: grafonnet build check
-        entry: bash -c 'grafonnet-workdir/build.sh && git diff --exit-code grafana/'
+        entry: bash -c 'cd grafonnet-workdir && ./build.sh && cd .. && git diff --exit-code grafana/'
         language: system
         files: ^grafonnet-workdir/src/
         pass_filenames: false

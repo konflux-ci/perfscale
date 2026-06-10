@@ -75,4 +75,3 @@ else
     # If piped, output raw CSV for compatibility
     cat "$TMP_CSV"
 fi
-
