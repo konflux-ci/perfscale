@@ -7,7 +7,7 @@ type -p jsonnet
 function build() {
     local in="${1}"
     local out="${2}"
-    time ~/bin/jsonnet -J vendor "${in}" | jq "." >"${out}"
+    time jsonnet -J vendor "${in}" | jq "." >"${out}"
 }
 
 # Dashboards used in custom Grafana, not deployed via infra-deployments
