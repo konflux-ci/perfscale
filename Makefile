@@ -23,4 +23,4 @@ check:
 	pre-commit run
 
 check-all:
-	pre-commit run --all-files
+	pre-commit run --all-files --verbose
