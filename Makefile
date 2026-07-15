@@ -13,6 +13,8 @@ bootstrap:
 	uv python install 3.12
 	@echo "==> Installing pre-commit..."
 	uv tool install pre-commit || uv tool upgrade pre-commit
+	@echo "==> Installing jsonnet..."
+	go install github.com/google/go-jsonnet/cmd/jsonnet@v0.22.0
 	@echo "==> Installing pre-commit hooks..."
 	@PATH="$(HOME)/.local/bin:$(PATH)" pre-commit install
 	@echo ""
@@ -23,4 +25,4 @@ check:
 	pre-commit run
 
 check-all:
-	pre-commit run --all-files --verbose
+	pre-commit run --all-files

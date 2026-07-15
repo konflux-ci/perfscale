@@ -16,5 +16,10 @@ jobs:
         run: |
           make bootstrap
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "$HOME/go/bin" >> "$GITHUB_PATH"
+      - name: Verify tools
+        run: |
+          pre-commit --version
+          jsonnet --version
       - name: Run checks
         run: make check-all
