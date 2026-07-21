@@ -4744,15 +4744,18 @@ Examples:
             status = "✓" if connected else "✗"
             print(f"  {status} {cluster}: {message}", file=sys.stderr)
 
+        accessible_count = sum(1 for _, connected, _ in connectivity_report if connected)
+        total_count = len(connectivity_report)
+
         if not all_connected:
-            print("\nWARNING: Some clusters are not accessible.", file=sys.stderr)
+            print(f"\nWARNING: {accessible_count}/{total_count} clusters are accessible.", file=sys.stderr)
             if args.dry_run:
-                print("  Data collection may fail for these clusters.", file=sys.stderr)
+                print("  Data collection may fail for unreachable clusters.", file=sys.stderr)
             else:
-                print("  Data collection may fail for these clusters.", file=sys.stderr)
+                print("  Data collection may fail for unreachable clusters.", file=sys.stderr)
                 print("  Continuing with accessible clusters only...", file=sys.stderr)
         else:
-            print("\n✓ All clusters are accessible", file=sys.stderr)
+            print(f"\n✓ {accessible_count}/{total_count} clusters are accessible", file=sys.stderr)
 
         # Always prompt for confirmation
         # For display, ensure steps have 'step-' prefix (for consistency with wrapper script format)
