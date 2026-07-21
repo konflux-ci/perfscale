@@ -4747,13 +4747,9 @@ Examples:
         accessible_count = sum(1 for _, connected, _ in connectivity_report if connected)
         total_count = len(connectivity_report)
 
-        cluster_summary = (
-            f"{accessible_count}/{total_count} clusters are accessible"
-        )
+        cluster_summary = f"{accessible_count}/{total_count} clusters are accessible"
         if not all_connected:
-            print(
-                f"\nWARNING: {cluster_summary}.", file=sys.stderr
-            )
+            print(f"\nWARNING: {cluster_summary}.", file=sys.stderr)
             print(
                 "  Data collection may fail for unreachable clusters.",
                 file=sys.stderr,
