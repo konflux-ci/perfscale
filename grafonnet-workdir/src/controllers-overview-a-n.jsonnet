@@ -13,6 +13,7 @@ controllers.overviewDashboard(
     controllers.myRow('external-secrets-operator', 'external-secrets-operator-[0-9a-z-]+'),
     controllers.myRow('external-secrets-operator', 'external-secrets-operator-cert-controller-[0-9a-z-]+'),
     controllers.myRow('external-secrets-operator', 'external-secrets-operator-webhook-[0-9a-z-]+'),
+    controllers.myRow('internal-services', 'controller-manager-[0-9a-z-]+'),   # this runs on a common private cluster only
     controllers.myRow('image-controller', 'image-controller-controller-manager-[0-9a-z-]+'),
     controllers.myRow('image-rbac-proxy', 'dex-[0-9a-z-]+'),
     controllers.myRow('image-rbac-proxy', 'image-rbac-proxy-[0-9a-z-]+'),
