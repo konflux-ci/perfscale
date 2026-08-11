@@ -59,9 +59,7 @@ def convert_github_url_to_raw(url):
 
 def fetch_yaml_content(file_path_or_url):
     """Fetch YAML content from file path or URL."""
-    if file_path_or_url.startswith("http://") or file_path_or_url.startswith(
-        "https://"
-    ):
+    if file_path_or_url.startswith("http://") or file_path_or_url.startswith("https://"):
         url = convert_github_url_to_raw(file_path_or_url)
         try:
             response = requests.get(url, timeout=30)
@@ -88,9 +86,7 @@ def extract_task_info(yaml_content):
     # Get default resources from stepTemplate
     # Support both Tekton v1 (computeResources) and v1beta1 (resources) field names
     step_template = yaml_content.get("spec", {}).get("stepTemplate", {})
-    default_resources = step_template.get("computeResources") or step_template.get(
-        "resources", {}
-    )
+    default_resources = step_template.get("computeResources") or step_template.get("resources", {})
     default_mem_req = default_resources.get("requests", {}).get("memory", "")
     default_cpu_req = default_resources.get("requests", {}).get("cpu", "")
     default_mem_lim = default_resources.get("limits", {}).get("memory", "")
@@ -343,13 +339,9 @@ def compute_heavy_tail_warnings(all_recommendations_by_base):
         step = rec["step_name"]
         mem_max = rec.get("mem_max_max", 0)
         p95_rec = p95_by_step.get(step)
-        mem_p95 = (
-            p95_rec.get("mem_p95_max", 0) if p95_rec else rec.get("mem_p95_max", 0)
-        )
+        mem_p95 = p95_rec.get("mem_p95_max", 0) if p95_rec else rec.get("mem_p95_max", 0)
         cpu_max = rec.get("cpu_max_max", 0)
-        cpu_p95 = (
-            p95_rec.get("cpu_p95_max", 0) if p95_rec else rec.get("cpu_p95_max", 0)
-        )
+        cpu_p95 = p95_rec.get("cpu_p95_max", 0) if p95_rec else rec.get("cpu_p95_max", 0)
         if mem_p95 > 0 and mem_max / mem_p95 >= RATIO_WARN:
             warnings.append(
                 {
@@ -425,16 +417,12 @@ def _compute_violators_for_step(detailed_executions, step_name, mem_base, cpu_ba
         return {}
 
     # Normalise the step name we look for (executions may carry it without 'step-' prefix)
-    step_bare = (
-        step_name.removeprefix("step-") if step_name.startswith("step-") else step_name
-    )
+    step_bare = step_name.removeprefix("step-") if step_name.startswith("step-") else step_name
 
     groups = _dd(lambda: {"mem_vals": [], "cpu_vals": []})
     for r in detailed_executions:
         r_step = r.get("step", "")
-        r_step_bare = (
-            r_step.removeprefix("step-") if r_step.startswith("step-") else r_step
-        )
+        r_step_bare = r_step.removeprefix("step-") if r_step.startswith("step-") else r_step
         if r_step_bare != step_bare:
             continue
         mem = float(r.get("memory_mb", 0) or 0)
@@ -523,16 +511,8 @@ def _html_violators_block(
     for row in flat_rows:
         mem_over = row["mem_max"] - mem_base if row["mem_viol"] else 0
         cpu_over = row["cpu_max"] - cpu_base if row["cpu_viol"] else 0
-        mem_vs = (
-            f"+{_fmt_mb(mem_over)}&nbsp;&#9888;"
-            if row["mem_viol"]
-            else "&#10003;&nbsp;ok"
-        )
-        cpu_vs = (
-            f"+{_fmt_cpu(cpu_over)}&nbsp;&#9888;"
-            if row["cpu_viol"]
-            else "&#10003;&nbsp;ok"
-        )
+        mem_vs = f"+{_fmt_mb(mem_over)}&nbsp;&#9888;" if row["mem_viol"] else "&#10003;&nbsp;ok"
+        cpu_vs = f"+{_fmt_cpu(cpu_over)}&nbsp;&#9888;" if row["cpu_viol"] else "&#10003;&nbsp;ok"
         mc = ' class="viol-cell"' if row["mem_viol"] else ""
         cc = ' class="viol-cell"' if row["cpu_viol"] else ""
         # data-val carries raw numeric value for JS sort:
@@ -618,10 +598,7 @@ def read_wrapper_config(wrapper_path):
                     steps_str = match.group(1).strip()
                     if steps_str:
                         # Split by space and remove 'step-' prefix
-                        steps_list = [
-                            normalize_step_name_for_compare(s)
-                            for s in steps_str.split()
-                        ]
+                        steps_list = [normalize_step_name_for_compare(s) for s in steps_str.split()]
 
         # Both must be defined and non-empty
         is_defined = (
@@ -666,9 +643,7 @@ def validate_wrapper_steps(wrapper_task, wrapper_steps, yaml_task, yaml_steps):
     # Check if wrapper steps are subset or equal to YAML steps
     extra_steps = wrapper_steps_set - yaml_steps_set
     if extra_steps:
-        errors.append(
-            f"Wrapper defines steps not found in YAML file: {sorted(extra_steps)}"
-        )
+        errors.append(f"Wrapper defines steps not found in YAML file: {sorted(extra_steps)}")
 
     missing_steps = yaml_steps_set - wrapper_steps_set
     if missing_steps:
@@ -719,9 +694,7 @@ def check_cluster_connectivity(wrapper_path):
                 timeout=120,  # 2 minutes timeout for connectivity check
             )
             if result.returncode == 0:
-                contexts = [
-                    c.strip() for c in result.stdout.strip().split("\n") if c.strip()
-                ]
+                contexts = [c.strip() for c in result.stdout.strip().split("\n") if c.strip()]
             else:
                 return False, [("unknown", False, "Could not get cluster contexts")]
         else:
@@ -743,15 +716,11 @@ def check_cluster_connectivity(wrapper_path):
                         )
                         if result.returncode == 0:
                             contexts = [
-                                c.strip()
-                                for c in result.stdout.strip().split("\n")
-                                if c.strip()
+                                c.strip() for c in result.stdout.strip().split("\n") if c.strip()
                             ]
                         else:
                             # Fallback to default if command fails (extract from echo)
-                            fallback_match = re.search(
-                                r'echo\s+[\'"]([^\'"]+)[\'"]', contexts_str
-                            )
+                            fallback_match = re.search(r'echo\s+[\'"]([^\'"]+)[\'"]', contexts_str)
                             if fallback_match:
                                 contexts = [fallback_match.group(1).strip()]
                             else:
@@ -763,13 +732,9 @@ def check_cluster_connectivity(wrapper_path):
                                     )
                                 ]
                     else:
-                        return False, [
-                            ("unknown", False, f"Unsupported CONTEXTS command: {cmd}")
-                        ]
+                        return False, [("unknown", False, f"Unsupported CONTEXTS command: {cmd}")]
                 else:
-                    return False, [
-                        ("unknown", False, "Invalid CONTEXTS command substitution")
-                    ]
+                    return False, [("unknown", False, "Invalid CONTEXTS command substitution")]
             else:
                 # Simple string value - split by space
                 contexts = [c.strip() for c in contexts_str.split() if c.strip()]
@@ -904,9 +869,7 @@ def extract_cluster_list(wrapper_path):
                 timeout=120,  # 2 minutes timeout for connectivity check
             )
             if result.returncode == 0:
-                contexts = [
-                    c.strip() for c in result.stdout.strip().split("\n") if c.strip()
-                ]
+                contexts = [c.strip() for c in result.stdout.strip().split("\n") if c.strip()]
             else:
                 return []
         else:
@@ -925,15 +888,11 @@ def extract_cluster_list(wrapper_path):
                         )
                         if result.returncode == 0:
                             contexts = [
-                                c.strip()
-                                for c in result.stdout.strip().split("\n")
-                                if c.strip()
+                                c.strip() for c in result.stdout.strip().split("\n") if c.strip()
                             ]
                         else:
                             # Fallback to default if command fails
-                            fallback_match = re.search(
-                                r'echo\s+[\'"]([^\'"]+)[\'"]', contexts_str
-                            )
+                            fallback_match = re.search(r'echo\s+[\'"]([^\'"]+)[\'"]', contexts_str)
                             if fallback_match:
                                 contexts = [fallback_match.group(1).strip()]
                             else:
@@ -995,9 +954,7 @@ def get_cluster_display_name(cluster_ctx):
     return cluster_ctx.split("/")[-1] if "/" in cluster_ctx else cluster_ctx
 
 
-def _spinner_thread(
-    stop_event, progress_data=None, progress_lock=None, total_clusters=0
-):
+def _spinner_thread(stop_event, progress_data=None, progress_lock=None, total_clusters=0):
     """Display a spinning wheel with percentage progress while collecting data from clusters.
 
     Shows overall cluster completion percentage plus a live pod-progress counter for each
@@ -1028,9 +985,7 @@ def _spinner_thread(
                     active_parts.append(f"{cname}:{done_n}/{total_n}")
             percentage = int((completed_count / total_clusters) * 100)
         spin = spinner_chars[idx % len(spinner_chars)]
-        active_str = (
-            ("  active→[" + "  ".join(active_parts) + "]") if active_parts else ""
-        )
+        active_str = ("  active→[" + "  ".join(active_parts) + "]") if active_parts else ""
         if percentage > 0:
             message = (
                 f"Clusters: {percentage}% ({completed_count}/{total_clusters} done)"
@@ -1039,9 +994,7 @@ def _spinner_thread(
             )
         else:
             message = (
-                f"Clusters: starting..."
-                f"{active_str}"
-                f"  [listed={pods_listed} kept={pods_kept}] {spin}"
+                f"Clusters: starting...{active_str}  [listed={pods_listed} kept={pods_kept}] {spin}"
             )
         print(f"\r{message}", end="", file=sys.stderr)
         sys.stderr.flush()
@@ -1121,9 +1074,7 @@ def parse_csv_data(csv_text):
     reader = csv.DictReader(lines)
     for row in reader:
         # Clean up keys (remove spaces and quotes)
-        cleaned_row = {
-            k.strip().strip('"'): v.strip().strip('"') for k, v in row.items()
-        }
+        cleaned_row = {k.strip().strip('"'): v.strip().strip('"') for k, v in row.items()}
         data.append(cleaned_row)
     return data
 
@@ -1377,9 +1328,7 @@ def verify_aggregates_against_detailed(detailed_executions, aggregated_rows):
         }
         main_vals = main_by_key.get(key)
         if not main_vals:
-            messages.append(
-                f"Verify: main has no row for cluster={cluster} step={step}"
-            )
+            messages.append(f"Verify: main has no row for cluster={cluster} step={step}")
             all_ok = False
             continue
         mismatches = []
@@ -1440,9 +1389,7 @@ def analyze_step_data(step_name, step_rows, margin_pct=10, base="max"):
         parse_cpu_value(r.get("cpu_p90", "0m")) for r in step_rows if r.get("cpu_p90")
     ]
     cpu_median_values = [
-        parse_cpu_value(r.get("cpu_median", "0m"))
-        for r in step_rows
-        if r.get("cpu_median")
+        parse_cpu_value(r.get("cpu_median", "0m")) for r in step_rows if r.get("cpu_median")
     ]
 
     if not mem_max_values:
@@ -1484,9 +1431,7 @@ def analyze_step_data(step_name, step_rows, margin_pct=10, base="max"):
 
     # Calculate recommendations: base + margin, but don't exceed max observed
     mem_recommended = (
-        min(mem_max_max, int(mem_base * (1 + margin_pct / 100)))
-        if mem_base > 0
-        else mem_max_max
+        min(mem_max_max, int(mem_base * (1 + margin_pct / 100))) if mem_base > 0 else mem_max_max
     )
     if cpu_base > 0:
         cpu_recommended = min(cpu_max_max * 1.1, cpu_base * (1 + margin_pct / 100))
@@ -1495,11 +1440,7 @@ def analyze_step_data(step_name, step_rows, margin_pct=10, base="max"):
 
     # Count coverage
     mem_coverage = len([x for x in mem_max_values if x <= mem_recommended])
-    cpu_coverage = (
-        len([x for x in cpu_max_values if x <= cpu_recommended])
-        if cpu_max_values
-        else 0
-    )
+    cpu_coverage = len([x for x in cpu_max_values if x <= cpu_recommended]) if cpu_max_values else 0
 
     return {
         "step_name": step_name,
@@ -1573,9 +1514,7 @@ def analyze_step_data_all_bases(step_name, step_rows, margin_pct=5):
         parse_cpu_value(r.get("cpu_p90", "0m")) for r in step_rows if r.get("cpu_p90")
     ]
     cpu_median_values = [
-        parse_cpu_value(r.get("cpu_median", "0m"))
-        for r in step_rows
-        if r.get("cpu_median")
+        parse_cpu_value(r.get("cpu_median", "0m")) for r in step_rows if r.get("cpu_median")
     ]
 
     if not mem_max_values:
@@ -1627,9 +1566,7 @@ def analyze_step_data_all_bases(step_name, step_rows, margin_pct=5):
         # Count coverage
         mem_coverage = len([x for x in mem_max_values if x <= mem_recommended])
         cpu_coverage = (
-            len([x for x in cpu_max_values if x <= cpu_recommended])
-            if cpu_max_values
-            else 0
+            len([x for x in cpu_max_values if x <= cpu_recommended]) if cpu_max_values else 0
         )
 
         all_recommendations[base] = {
@@ -1658,9 +1595,7 @@ def analyze_step_data_all_bases(step_name, step_rows, margin_pct=5):
     return all_recommendations
 
 
-def print_comparison_table(
-    recommendations, current_resources=None, task_name=None, save_html=True
-):
+def print_comparison_table(recommendations, current_resources=None, task_name=None, save_html=True):
     """Print comparison table of current vs proposed resource limits.
 
     Also saves the comparison table as HTML if task_name is provided and save_html is True.
@@ -1719,9 +1654,7 @@ def print_comparison_table(
         prop_req = f"{proposed_mem} / {proposed_cpu}"
         prop_lim = f"{proposed_mem} / {proposed_cpu}"
 
-        print(
-            f"{step_name_yaml:<15} {curr_req:<20} {prop_req:<20} {curr_lim:<20} {prop_lim:<20}"
-        )
+        print(f"{step_name_yaml:<15} {curr_req:<20} {prop_req:<20} {curr_lim:<20} {prop_lim:<20}")
 
     print()
 
@@ -1764,14 +1697,10 @@ def print_analysis(
         Path to comparison HTML file if saved, None otherwise
     """
     base_label = (
-        recommendations[0]["base_label"]
-        if recommendations and recommendations[0]
-        else base.upper()
+        recommendations[0]["base_label"] if recommendations and recommendations[0] else base.upper()
     )
     print("=" * 80)
-    print(
-        f"RESOURCE LIMIT RECOMMENDATIONS ({base_label} + {margin_pct}% Safety Margin)"
-    )
+    print(f"RESOURCE LIMIT RECOMMENDATIONS ({base_label} + {margin_pct}% Safety Margin)")
     print("=" * 80)
     print()
 
@@ -1783,13 +1712,9 @@ def print_analysis(
         print("-" * 80)
         print(f"  Memory: {rec['mem_recommended_k8s']}")
         if rec["base_label"] == "Max":
-            print(
-                f"    - Base ({rec['base_label']}): {mb_to_kubernetes(rec['mem_base'])}"
-            )
+            print(f"    - Base ({rec['base_label']}): {mb_to_kubernetes(rec['mem_base'])}")
         else:
-            print(
-                f"    - Base ({rec['base_label']}): {mb_to_kubernetes(rec['mem_base'])}"
-            )
+            print(f"    - Base ({rec['base_label']}): {mb_to_kubernetes(rec['mem_base'])}")
             print(f"    - Max observed: {mb_to_kubernetes(rec['mem_max_max'])}")
         print(f"    - Coverage: {rec['mem_coverage']}/{rec['mem_total']} clusters")
         print()
@@ -1797,13 +1722,9 @@ def print_analysis(
         if rec["cpu_total"] > 0:
             print(f"  CPU: {rec['cpu_recommended_k8s']}")
             if rec["base_label"] == "Max":
-                print(
-                    f"    - Base ({rec['base_label']}): {cores_to_kubernetes(rec['cpu_base'])}"
-                )
+                print(f"    - Base ({rec['base_label']}): {cores_to_kubernetes(rec['cpu_base'])}")
             else:
-                print(
-                    f"    - Base ({rec['base_label']}): {cores_to_kubernetes(rec['cpu_base'])}"
-                )
+                print(f"    - Base ({rec['base_label']}): {cores_to_kubernetes(rec['cpu_base'])}")
                 print(f"    - Max observed: {cores_to_kubernetes(rec['cpu_max_max'])}")
             print(f"    - Coverage: {rec['cpu_coverage']}/{rec['cpu_total']} clusters")
         else:
@@ -2151,9 +2072,7 @@ def save_csv_to_html(csv_data, task_name, timestamp_str):
     for i, header in enumerate(headers):
         # Strip quotes from header names for cleaner display
         header_cleaned = header.strip().strip('"').strip("'")
-        html_content += (
-            f'                <th onclick="sortTable({i})">{header_cleaned}</th>\n'
-        )
+        html_content += f'                <th onclick="sortTable({i})">{header_cleaned}</th>\n'
 
     html_content += """            </tr>
         </thead>
@@ -2190,9 +2109,7 @@ def save_csv_to_html(csv_data, task_name, timestamp_str):
     return html_path
 
 
-def save_comparison_table_to_html(
-    recommendations, current_resources, task_name, timestamp_str
-):
+def save_comparison_table_to_html(recommendations, current_resources, task_name, timestamp_str):
     """Save comparison table as HTML (non-sortable).
 
     Args:
@@ -2326,9 +2243,7 @@ def save_comparison_table_to_html(
     return html_path
 
 
-def get_date_based_file_path(
-    task_name, file_type, date_str, timestamp_str=None, margin_pct=None
-):
+def get_date_based_file_path(task_name, file_type, date_str, timestamp_str=None, margin_pct=None):
     """Get file path for date-based file naming.
 
     Args:
@@ -2351,9 +2266,7 @@ def get_date_based_file_path(
     if file_type == "comparison_data" and margin_pct is not None:
         # Comparison files include margin in filename
         if timestamp_str:
-            filename = (
-                f"{safe_task_name}_{file_type}_margin-{margin_pct}_{timestamp_str}"
-            )
+            filename = f"{safe_task_name}_{file_type}_margin-{margin_pct}_{timestamp_str}"
         else:
             filename = f"{safe_task_name}_{file_type}_margin-{margin_pct}_{date_str}"
     else:
@@ -2454,12 +2367,12 @@ def save_analyzed_data(
             task_name, "analyzed_data", date_str, timestamp_str
         ).with_suffix(".json")
     else:
-        html_path = get_date_based_file_path(
-            task_name, "analyzed_data", date_str
-        ).with_suffix(".html")
-        json_path = get_date_based_file_path(
-            task_name, "analyzed_data", date_str
-        ).with_suffix(".json")
+        html_path = get_date_based_file_path(task_name, "analyzed_data", date_str).with_suffix(
+            ".html"
+        )
+        json_path = get_date_based_file_path(task_name, "analyzed_data", date_str).with_suffix(
+            ".json"
+        )
 
     # Save HTML (reuse existing function but with date-based naming)
     if csv_data:
@@ -2471,9 +2384,7 @@ def save_analyzed_data(
         if rows:
             headers = [h.strip().strip('"') for h in rows[0]]
             data_rows = rows[1:] if len(rows) > 1 else []
-            banner_html = _html_steps_missing_observability_banner(
-                steps_without_observability_data
-            )
+            banner_html = _html_steps_missing_observability_banner(steps_without_observability_data)
             coverage_banner = _html_cluster_coverage_banner(
                 cluster_coverage_report or {}, days_requested or 0
             )
@@ -2581,7 +2492,9 @@ def save_analyzed_data(
 
             for i, header in enumerate(headers):
                 header_cleaned = header.strip().strip('"').strip("'")
-                html_content += f'                <th onclick="sortTable({i})">{header_cleaned}</th>\n'
+                html_content += (
+                    f'                <th onclick="sortTable({i})">{header_cleaned}</th>\n'  # noqa: E501
+                )
 
             html_content += """            </tr>
         </thead>
@@ -2616,9 +2529,7 @@ def save_analyzed_data(
         "date": date_str,
         "timestamp": datetime.now().isoformat(),
         "csv_data": csv_data,
-        "steps_without_observability_data": list(
-            steps_without_observability_data or []
-        ),
+        "steps_without_observability_data": list(steps_without_observability_data or []),
         "cluster_coverage_report": cluster_coverage_report or {},
         "days_requested": days_requested or 0,
     }
@@ -2653,9 +2564,7 @@ def _write_one_step_detailed_files(
             f"_{timestamp_suffix}"
         )
     else:
-        base = (
-            f"{safe_task_name}_analyzed_data_detailed_step_{safe_step_name}_{date_str}"
-        )
+        base = f"{safe_task_name}_analyzed_data_detailed_step_{safe_step_name}_{date_str}"
     html_path = cache_dir / f"{base}.html"
     json_path = cache_dir / f"{base}.json"
     csv_path = cache_dir / f"{base}.csv"
@@ -2872,9 +2781,7 @@ def save_detailed_per_step_data(task_name, executions_data, date_str):
     for step_name in by_step:
         safe_step = re.sub(r"[^a-zA-Z0-9_-]", "_", step_name)
         base = f"{safe_task_name}_analyzed_data_detailed_step_{safe_step}_{date_str}"
-        if (cache_dir / f"{base}.html").exists() or (
-            cache_dir / f"{base}.json"
-        ).exists():
+        if (cache_dir / f"{base}.html").exists() or (cache_dir / f"{base}.json").exists():
             # Time only (date already in base) to avoid ..._20260217_20260217_180906
             timestamp_suffix = datetime.now().strftime("%H%M%S")
             break
@@ -2973,9 +2880,7 @@ def save_comparison_data_all_bases(
             task_name, "comparison_data", date_str, margin_pct=margin_pct
         ).with_suffix(".json")
 
-    banner_cmp = _html_steps_missing_observability_banner(
-        steps_without_observability_data or []
-    )
+    banner_cmp = _html_steps_missing_observability_banner(steps_without_observability_data or [])
     coverage_banner = _html_cluster_coverage_banner(
         cluster_coverage_report or {}, days_requested or 0
     )
@@ -3229,9 +3134,7 @@ def save_comparison_data_all_bases(
         "timestamp": datetime.now().isoformat(),
         "margin_pct": margin_pct,
         "recommendations_by_base": all_recommendations_by_base,
-        "steps_without_observability_data": list(
-            steps_without_observability_data or []
-        ),
+        "steps_without_observability_data": list(steps_without_observability_data or []),
         "cluster_coverage_report": cluster_coverage_report or {},
         "days_requested": days_requested or 0,
         "heavy_tail_warnings": tail_warnings,
@@ -3257,9 +3160,7 @@ def load_analyzed_data(task_name, date_str):
         Dictionary with analyzed data or None if not found
     """
     # Try date-only format first
-    json_path = get_date_based_file_path(
-        task_name, "analyzed_data", date_str
-    ).with_suffix(".json")
+    json_path = get_date_based_file_path(task_name, "analyzed_data", date_str).with_suffix(".json")
 
     if json_path.exists():
         try:
@@ -3420,8 +3321,7 @@ def _list_task_pods(session, host, token, task_name, end_time_secs, lookback_sec
         headers={"Authorization": f"Bearer {token}"},
         params={
             "query": (
-                f'kube_pod_labels{{label_tekton_dev_task="{task_name}",'
-                f'namespace=~".*-tenant"}}'
+                f'kube_pod_labels{{label_tekton_dev_task="{task_name}",namespace=~".*-tenant"}}'
             ),
             "step": step,
             "start": end_time_secs - lookback_seconds,
@@ -3517,21 +3417,17 @@ def _get_component_for_pod(session, host, token, pod, namespace, end_time, days)
         data = _fetch(q_with_ns if ns_valid else q_no_ns, use_range)
         if not data and ns_valid:
             data = _fetch(q_no_ns, use_range)
-    except Exception:
+    except Exception:  # nosec B110
         data = []
 
     if not data:
         return "N/A", "N/A"
 
     metric = data[0].get("metric", {}) if isinstance(data[0], dict) else {}
-    return _first_present(metric, _COMPONENT_KEYS), _first_present(
-        metric, _APPLICATION_KEYS
-    )
+    return _first_present(metric, _COMPONENT_KEYS), _first_present(metric, _APPLICATION_KEYS)
 
 
-def extract_component_from_pod(
-    pod_name, namespace, token, prom_host, end_time, days, session=None
-):
+def extract_component_from_pod(pod_name, namespace, token, prom_host, end_time, days, session=None):
     """Extract component and application from pod labels or namespace/pod name.
 
     Args:
@@ -3560,7 +3456,7 @@ def extract_component_from_pod(
                 )
                 if component and component != "N/A":
                     return (component, application if application else "N/A")
-            except Exception:
+            except Exception:  # nosec B110
                 pass
         else:
             script_dir = Path(__file__).parent
@@ -3688,9 +3584,7 @@ def collect_individual_pod_executions(
     }
     samples_lock = Lock()
 
-    def add_debug_sample(
-        reason, cluster_name, pod_name="", namespace="", step="", detail=""
-    ):
+    def add_debug_sample(reason, cluster_name, pod_name="", namespace="", step="", detail=""):
         if not debug:
             return
         with samples_lock:
@@ -3727,9 +3621,7 @@ def collect_individual_pod_executions(
             all_executions.extend(_execs)
             collection_stats["per_cluster"][_cluster] = _stats
             _merge_counters(collection_stats, _stats)
-        clusters = [
-            c for c in clusters if get_cluster_display_name(c) not in already_done
-        ]
+        clusters = [c for c in clusters if get_cluster_display_name(c) not in already_done]
         if not clusters:
             print(
                 "[checkpoint] All clusters already checkpointed — skipping data collection.",
@@ -3742,9 +3634,7 @@ def collect_individual_pod_executions(
         cluster_stats = _empty_collection_counters()
         cluster_name = get_cluster_display_name(cluster_ctx)
         try:
-            original_kubeconfig = os.environ.get(
-                "KUBECONFIG", os.path.expanduser("~/.kube/config")
-            )
+            original_kubeconfig = os.environ.get("KUBECONFIG", os.path.expanduser("~/.kube/config"))
             temp_kubeconfig = (
                 script_dir
                 / f".kubeconfig_detailed_{cluster_ctx.replace('/', '_').replace(':', '_')}"
@@ -3948,9 +3838,7 @@ def collect_individual_pod_executions(
                     io_write_result = query_results.get("io_write")
 
                     # Memory is required; CPU/IO failures are non-fatal.
-                    mem_ok = (
-                        not isinstance(mem_result, Exception) and mem_result is not None
-                    )
+                    mem_ok = not isinstance(mem_result, Exception) and mem_result is not None
                     if not mem_ok:
                         with pod_lock:
                             cluster_stats["query_failures"] += 1
@@ -3973,8 +3861,7 @@ def collect_individual_pod_executions(
                         mem_data = mem_result
                         cpu_data = (
                             cpu_result
-                            if not isinstance(cpu_result, Exception)
-                            and cpu_result is not None
+                            if not isinstance(cpu_result, Exception) and cpu_result is not None
                             else {"data": {"result": []}}
                         )
                         io_read_data = (
@@ -3999,9 +3886,7 @@ def collect_individual_pod_executions(
                         mem_series = mem_data.get("data", {}).get("result", [])
                         cpu_series = cpu_data.get("data", {}).get("result", [])
                         io_read_series = io_read_data.get("data", {}).get("result", [])
-                        io_write_series = io_write_data.get("data", {}).get(
-                            "result", []
-                        )
+                        io_write_series = io_write_data.get("data", {}).get("result", [])
 
                         matched_mem_series = False
                         if mem_series:
@@ -4082,13 +3967,11 @@ def collect_individual_pod_executions(
                         io_write_mbps = round(io_write_max_bytes_s / (1024 * 1024), 3)
 
                         if first_timestamp:
-                            exec_timestamp = datetime.fromtimestamp(
-                                first_timestamp
-                            ).strftime("%Y-%m-%d %H:%M:%S")
-                        else:
-                            exec_timestamp = datetime.now().strftime(
+                            exec_timestamp = datetime.fromtimestamp(first_timestamp).strftime(
                                 "%Y-%m-%d %H:%M:%S"
                             )
+                        else:
+                            exec_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
                         res = (current_resources or {}).get(step, {}) or {}
                         req = res.get("requests") or {}
@@ -4212,12 +4095,8 @@ def collect_individual_pod_executions(
                     with progress_lock:
                         if display not in progress_data["completed"]:
                             progress_data["completed"].append(display)
-                        progress_data["pods_listed"] += cluster_stats.get(
-                            "pods_listed", 0
-                        )
-                        progress_data["pods_queried"] += cluster_stats.get(
-                            "pods_queried", 0
-                        )
+                        progress_data["pods_listed"] += cluster_stats.get("pods_listed", 0)
+                        progress_data["pods_queried"] += cluster_stats.get("pods_queried", 0)
                         progress_data["pods_kept"] += cluster_stats.get("pods_kept", 0)
                         # Remove from active_clusters now that it is done
                         progress_data["active_clusters"].pop(display, None)
@@ -4234,9 +4113,7 @@ def collect_individual_pod_executions(
                     if display not in progress_data["completed"]:
                         progress_data["completed"].append(display)
                     progress_data["pods_listed"] += cluster_stats.get("pods_listed", 0)
-                    progress_data["pods_queried"] += cluster_stats.get(
-                        "pods_queried", 0
-                    )
+                    progress_data["pods_queried"] += cluster_stats.get("pods_queried", 0)
                     progress_data["pods_kept"] += cluster_stats.get("pods_kept", 0)
                     # Remove from active_clusters now that it is done
                     progress_data["active_clusters"].pop(display, None)
@@ -4303,9 +4180,7 @@ def generate_diff_patch(original_yaml, updated_yaml, file_path_or_url):
     script_dir = Path(__file__).parent
 
     # Create temporary files
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".yaml", delete=False
-    ) as orig_file:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as orig_file:
         yaml.dump(
             original_yaml,
             orig_file,
@@ -4315,19 +4190,13 @@ def generate_diff_patch(original_yaml, updated_yaml, file_path_or_url):
         )
         orig_path = orig_file.name
 
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".yaml", delete=False
-    ) as upd_file:
-        yaml.dump(
-            updated_yaml, upd_file, default_flow_style=False, sort_keys=False, width=120
-        )
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as upd_file:
+        yaml.dump(updated_yaml, upd_file, default_flow_style=False, sort_keys=False, width=120)
         upd_path = upd_file.name
 
     try:
         # Generate diff using diff command
-        result = subprocess.run(
-            ["diff", "-u", orig_path, upd_path], capture_output=True, text=True
-        )
+        result = subprocess.run(["diff", "-u", orig_path, upd_path], capture_output=True, text=True)
 
         # Extract filename from URL for patch file naming
         url_parts = file_path_or_url.split("/")
@@ -4382,9 +4251,7 @@ def generate_diff_patch(original_yaml, updated_yaml, file_path_or_url):
         os.unlink(upd_path)
 
 
-def update_yaml_file(
-    yaml_path, recommendations, original_yaml, file_path_or_url=None, debug=False
-):
+def update_yaml_file(yaml_path, recommendations, original_yaml, file_path_or_url=None, debug=False):
     """Update YAML file with recommended resource limits, preserving original formatting."""
     updated = False
 
@@ -4410,8 +4277,7 @@ def update_yaml_file(
 
     # If remote URL, use the old method (generate patch)
     if file_path_or_url and (
-        file_path_or_url.startswith("http://")
-        or file_path_or_url.startswith("https://")
+        file_path_or_url.startswith("http://") or file_path_or_url.startswith("https://")
     ):
         updated_yaml = yaml.safe_load(yaml.dump(original_yaml))  # Deep copy
 
@@ -4461,9 +4327,7 @@ def update_yaml_file(
             if re.match(r"^\s+steps:\s*$", line):
                 in_steps_section = True
                 if debug:
-                    print(
-                        f"DEBUG: Entered steps section at line {i + 1}", file=sys.stderr
-                    )
+                    print(f"DEBUG: Entered steps section at line {i + 1}", file=sys.stderr)
             elif in_steps_section:
                 line_indent = len(line) - len(line.lstrip())
                 if (
@@ -4471,9 +4335,7 @@ def update_yaml_file(
                     and line.strip()
                     and not line.strip().startswith("-")
                     and not line.strip().startswith("#")
-                ) and (
-                    "workspaces:" in line or "results:" in line or "volumes:" in line
-                ):
+                ) and ("workspaces:" in line or "results:" in line or "volumes:" in line):
                     in_steps_section = False
                     if debug:
                         print(
@@ -4627,9 +4489,7 @@ def update_yaml_file(
                             break
 
                         # Check for step name (2 or 4 spaces: 2 for steps:, 0-2 for list item)
-                        if re.match(
-                            r"^\s+-\s+name:\s+", search_line
-                        ) and line_indent in (2, 4):
+                        if re.match(r"^\s+-\s+name:\s+", search_line) and line_indent in (2, 4):
                             name_match = re.search(r"name:\s+(.+)$", search_line)
                             if name_match and name_match.group(1).strip() == step_name:
                                 current_step_line = search_idx
@@ -4686,20 +4546,12 @@ def update_yaml_file(
 
                 # Find the actual indent for step content fields (like image:, computeResources:)
                 # Step content should be indented 4 spaces (same as image:, env:, etc.)
-                step_content_indent = (
-                    step_indent + 2
-                )  # Default: 2 spaces more than step name
+                step_content_indent = step_indent + 2  # Default: 2 spaces more than step name
                 # Look for image: or other step fields to determine correct indent
-                for k in range(
-                    current_step_line, min(current_step_line + 10, len(lines))
-                ):
+                for k in range(current_step_line, min(current_step_line + 10, len(lines))):
                     check_line = lines[k]
                     check_indent = len(check_line) - len(check_line.lstrip())
-                    if (
-                        "image:" in check_line
-                        or "env:" in check_line
-                        or "script:" in check_line
-                    ):
+                    if "image:" in check_line or "env:" in check_line or "script:" in check_line:
                         step_content_indent = check_indent
                         break
 
@@ -4714,9 +4566,7 @@ def update_yaml_file(
                 cpu_updated_requests = False
                 compute_resources_found = False
                 compute_resources_insert_pos = None
-                compute_resources_indent = (
-                    None  # Will be set when we find computeResources
-                )
+                compute_resources_indent = None  # Will be set when we find computeResources
 
                 while j < len(lines):
                     next_line = lines[j]
@@ -4726,8 +4576,7 @@ def update_yaml_file(
                     # Stop if we've moved to the next step (same or less indent with "- name:" or
                     # "name:")
                     if next_indent <= step_indent and (
-                        next_stripped.startswith("- name:")
-                        or next_stripped.startswith("name:")
+                        next_stripped.startswith("- name:") or next_stripped.startswith("name:")
                     ):
                         break
 
@@ -4740,11 +4589,7 @@ def update_yaml_file(
                     # Allow some flexibility in indent to handle formatting variations
                     if "computeResources:" in next_line and (
                         next_indent == step_content_indent
-                        or (
-                            step_content_indent <= 4
-                            and next_indent >= 2
-                            and next_indent <= 6
-                        )
+                        or (step_content_indent <= 4 and next_indent >= 2 and next_indent <= 6)
                     ):
                         in_compute_resources = True
                         compute_resources_found = True
@@ -4764,10 +4609,7 @@ def update_yaml_file(
 
                     # Track where to insert computeResources if not found (after name: and image:,
                     # before other fields)
-                    if (
-                        not compute_resources_found
-                        and compute_resources_insert_pos is None
-                    ):
+                    if not compute_resources_found and compute_resources_insert_pos is None:
                         # Stop if we've left the step (hit next step marker or back to step list
                         # level)
                         if next_indent <= step_indent:
@@ -4777,9 +4619,7 @@ def update_yaml_file(
                             for k in range(j - 1, max(current_step_line, j - 20), -1):
                                 if k < len(lines):
                                     check_line = lines[k]
-                                    check_indent = len(check_line) - len(
-                                        check_line.lstrip()
-                                    )
+                                    check_indent = len(check_line) - len(check_line.lstrip())
                                     if (
                                         check_indent == step_content_indent
                                         and check_line.strip()
@@ -4846,10 +4686,7 @@ def update_yaml_file(
                         if compute_resources_indent is not None
                         else step_indent + 2
                     )
-                    if (
-                        "requests:" in next_line
-                        and next_indent == expected_requests_indent
-                    ):
+                    if "requests:" in next_line and next_indent == expected_requests_indent:
                         # Before leaving limits section, add missing fields
                         if in_limits and not cpu_updated_limits:
                             indent = " " * (limits_indent + 2)
@@ -4882,9 +4719,7 @@ def update_yaml_file(
                             re.match(r"^\s+memory:\s+", next_line)
                             and next_indent == limits_indent + 2
                         ):
-                            indent = next_line[
-                                : len(next_line) - len(next_line.lstrip())
-                            ]
+                            indent = next_line[: len(next_line) - len(next_line.lstrip())]
                             lines[j] = f"{indent}memory: {resources['memory']}\n"
                             memory_updated_limits = True
                             updated = True
@@ -4897,12 +4732,9 @@ def update_yaml_file(
 
                         # Update cpu in limits (should be indented 2 spaces more than limits:)
                         elif (
-                            re.match(r"^\s+cpu:\s+", next_line)
-                            and next_indent == limits_indent + 2
+                            re.match(r"^\s+cpu:\s+", next_line) and next_indent == limits_indent + 2
                         ):
-                            indent = next_line[
-                                : len(next_line) - len(next_line.lstrip())
-                            ]
+                            indent = next_line[: len(next_line) - len(next_line.lstrip())]
                             lines[j] = f"{indent}cpu: {resources['cpu']}\n"
                             cpu_updated_limits = True
                             updated = True
@@ -4922,9 +4754,7 @@ def update_yaml_file(
                             ):
                                 # Insert memory before leaving limits section
                                 indent = " " * (limits_indent + 2)
-                                lines.insert(
-                                    j, f"{indent}memory: {resources['memory']}\n"
-                                )
+                                lines.insert(j, f"{indent}memory: {resources['memory']}\n")
                                 memory_updated_limits = True
                                 updated = True
                                 j += 1
@@ -4945,9 +4775,7 @@ def update_yaml_file(
                             re.match(r"^\s+memory:\s+", next_line)
                             and next_indent == requests_indent + 2
                         ):
-                            indent = next_line[
-                                : len(next_line) - len(next_line.lstrip())
-                            ]
+                            indent = next_line[: len(next_line) - len(next_line.lstrip())]
                             lines[j] = f"{indent}memory: {resources['memory']}\n"
                             memory_updated_requests = True
                             updated = True
@@ -4963,9 +4791,7 @@ def update_yaml_file(
                             re.match(r"^\s+cpu:\s+", next_line)
                             and next_indent == requests_indent + 2
                         ):
-                            indent = next_line[
-                                : len(next_line) - len(next_line.lstrip())
-                            ]
+                            indent = next_line[: len(next_line) - len(next_line.lstrip())]
                             lines[j] = f"{indent}cpu: {resources['cpu']}\n"
                             cpu_updated_requests = True
                             updated = True
@@ -5008,9 +4834,7 @@ def update_yaml_file(
                                     if requests_indent
                                     else " " * (step_content_indent + 2)
                                 )
-                                lines.insert(
-                                    j, f"{indent}memory: {resources['memory']}\n"
-                                )
+                                lines.insert(j, f"{indent}memory: {resources['memory']}\n")
                                 memory_updated_requests = True
                                 updated = True
                                 if debug:
@@ -5041,10 +4865,7 @@ def update_yaml_file(
                     j += 1
 
                 # If computeResources wasn't found, create it
-                if (
-                    not compute_resources_found
-                    and compute_resources_insert_pos is not None
-                ):
+                if not compute_resources_found and compute_resources_insert_pos is not None:
                     indent = " " * step_content_indent
                     compute_resources_block = [
                         f"{indent}computeResources:\n",
@@ -5219,9 +5040,7 @@ Examples:
     parser.add_argument(
         "--debug",
         action="store_true",
-        help=(
-            "Enable debug output including pod counts and capped PromQL skip-reason samples"
-        ),
+        help=("Enable debug output including pod counts and capped PromQL skip-reason samples"),
     )
     parser.add_argument(
         "--dry-run",
@@ -5352,9 +5171,7 @@ Examples:
 
             steps_missing_obs = analyzed_data.get("steps_without_observability_data")
             if steps_missing_obs is None:
-                steps_missing_obs = compute_steps_missing_observability(
-                    file_steps, by_step
-                )
+                steps_missing_obs = compute_steps_missing_observability(file_steps, by_step)
             # Save comparison data with new margin (no timestamp since no re-analysis)
             html_path, json_path = save_comparison_data_all_bases(
                 task_name,
@@ -5365,9 +5182,7 @@ Examples:
                 use_timestamp=False,
                 steps_without_observability_data=steps_missing_obs,
             )
-            print(
-                f"Created comparison files for margin {args.margin}%:", file=sys.stderr
-            )
+            print(f"Created comparison files for margin {args.margin}%:", file=sys.stderr)
             print(f"  - {html_path}", file=sys.stderr)
             print(f"  - {json_path}", file=sys.stderr)
         else:
@@ -5376,24 +5191,18 @@ Examples:
                 file=sys.stderr,
             )
             # Load existing comparison data
-            comparison_data = load_comparison_data(
-                task_name, analysis_date, args.margin
-            )
+            comparison_data = load_comparison_data(task_name, analysis_date, args.margin)
             if not comparison_data:
                 print("Error: Could not load comparison data", file=sys.stderr)
                 sys.exit(1)
-            all_recommendations_by_base = comparison_data.get(
-                "recommendations_by_base", {}
-            )
+            all_recommendations_by_base = comparison_data.get("recommendations_by_base", {})
 
         # Show comparison tables for all base metrics (--base is ignored in Phase 2)
         print(
             f"\nShowing recommendations for all base metrics (margin: {args.margin}%):",
             file=sys.stderr,
         )
-        print(
-            "Note: --base flag is ignored. All base metrics are shown.", file=sys.stderr
-        )
+        print("Note: --base flag is ignored. All base metrics are shown.", file=sys.stderr)
         print()
 
         # Show comparison table for each base metric
@@ -5425,8 +5234,8 @@ Examples:
     if args.file:
         # Load YAML and extract task info
         yaml_content, yaml_path = fetch_yaml_content(args.file)
-        yaml_task_name, yaml_steps, default_resources, current_resources = (
-            extract_task_info(yaml_content)
+        yaml_task_name, yaml_steps, default_resources, current_resources = extract_task_info(
+            yaml_content
         )
 
         if not yaml_task_name:
@@ -5496,9 +5305,7 @@ Examples:
             source_desc = "defined in wrapper script (validated against YAML)"
         else:
             # Extract from YAML and prefix steps with 'step-'
-            final_steps = [
-                f"step-{s}" if not s.startswith("step-") else s for s in yaml_steps
-            ]
+            final_steps = [f"step-{s}" if not s.startswith("step-") else s for s in yaml_steps]
             source_desc = "extracted from YAML file"
 
         # Always check cluster connectivity (before proceeding with analysis)
@@ -5515,9 +5322,7 @@ Examples:
             status = "✓" if connected else "✗"
             print(f"  {status} {cluster}: {message}", file=sys.stderr)
 
-        accessible_count = sum(
-            1 for _, connected, _ in connectivity_report if connected
-        )
+        accessible_count = sum(1 for _, connected, _ in connectivity_report if connected)
         total_count = len(connectivity_report)
 
         cluster_summary = f"{accessible_count}/{total_count} clusters are accessible"
@@ -5536,9 +5341,7 @@ Examples:
             print(f"\n✓ {cluster_summary}", file=sys.stderr)
 
         # For display, ensure steps have 'step-' prefix (for consistency with wrapper script format)
-        steps_for_display = [
-            f"step-{s}" if not s.startswith("step-") else s for s in final_steps
-        ]
+        steps_for_display = [f"step-{s}" if not s.startswith("step-") else s for s in final_steps]
         if not prompt_confirmation(final_task_name, steps_for_display, source_desc):
             print("Aborted by user.", file=sys.stderr)
             sys.exit(0)
@@ -5565,9 +5368,7 @@ Examples:
         steps_for_collection = [normalize_step_name_for_compare(s) for s in final_steps]
 
         # Single source of truth: collect detailed per-pod data, then derive CSV for analysis
-        parallel_workers = (
-            args.pll_clusters if args.pll_clusters and not args.update else None
-        )
+        parallel_workers = args.pll_clusters if args.pll_clusters and not args.update else None
         pll_queries = max(1, min(4, args.pll_queries)) if args.pll_queries else 2
         pll_pods = max(1, args.pll_pods) if args.pll_pods else 8
         detailed_executions, collection_stats = collect_individual_pod_executions(
@@ -5696,9 +5497,7 @@ Examples:
             "  2. Task or step names don't match what's actually running in clusters",
             file=sys.stderr,
         )
-        print(
-            "  3. Cluster connectivity issues (try --dry-run to check)", file=sys.stderr
-        )
+        print("  3. Cluster connectivity issues (try --dry-run to check)", file=sys.stderr)
         print(
             "  4. Time period too short (try increasing --days / --hours)",
             file=sys.stderr,
@@ -5710,9 +5509,7 @@ Examples:
         # Show first few lines of CSV to help debug
         if csv_data:
             csv_lines = csv_data.strip().split("\n")
-            print(
-                f"\nCSV output (first {min(5, len(csv_lines))} lines):", file=sys.stderr
-            )
+            print(f"\nCSV output (first {min(5, len(csv_lines))} lines):", file=sys.stderr)
             for i, line in enumerate(csv_lines[:5], 1):
                 print(f"  {i}: {line[:100]}", file=sys.stderr)
         sys.exit(1)
@@ -5760,9 +5557,7 @@ Examples:
     # Note: --base is ignored in Phase 1, all metrics (max, p95, p90, median) are generated
     all_recommendations_by_base = {"max": [], "p95": [], "p90": [], "median": []}
     for step_name in sorted(by_step.keys()):
-        step_all_bases = analyze_step_data_all_bases(
-            step_name, by_step[step_name], args.margin
-        )
+        step_all_bases = analyze_step_data_all_bases(step_name, by_step[step_name], args.margin)
         if step_all_bases:
             for base in ["max", "p95", "p90", "median"]:
                 all_recommendations_by_base[base].append(step_all_bases[base])
@@ -5820,9 +5615,7 @@ Examples:
     # Save detailed per-step data (one HTML/JSON/CSV per step); use already-collected executions
     # when from --file (single source)
     if file_path_or_url and task_name and steps and detailed_executions:
-        detailed_paths = save_detailed_per_step_data(
-            task_name, detailed_executions, date_str
-        )
+        detailed_paths = save_detailed_per_step_data(task_name, detailed_executions, date_str)
         print("\nSaved detailed per-step data (one file per step):", file=sys.stderr)
         for html_path, json_path, csv_path in detailed_paths:
             print(f"  - {html_path}", file=sys.stderr)
@@ -5832,14 +5625,10 @@ Examples:
     # In-memory verification: aggregated main table vs recomputation from detailed executions (only
     # when we have both)
     if detailed_executions and data:
-        verify_ok, verify_messages = verify_aggregates_against_detailed(
-            detailed_executions, data
-        )
+        verify_ok, verify_messages = verify_aggregates_against_detailed(detailed_executions, data)
         if verify_messages:
             print("\n" + "=" * 80, file=sys.stderr)
-            print(
-                "Aggregate verification (main table vs detailed data):", file=sys.stderr
-            )
+            print("Aggregate verification (main table vs detailed data):", file=sys.stderr)
             print("=" * 80, file=sys.stderr)
             for msg in verify_messages:
                 print(f"  {msg}", file=sys.stderr)
