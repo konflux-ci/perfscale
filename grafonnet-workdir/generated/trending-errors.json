@@ -57,7 +57,7 @@
         "w": 24
       },
       "id": 1,
-      "pluginVersion": "v11.4.0",
+      "pluginVersion": "v13.0.0",
       "targets": [
         {
           "datasource": {
@@ -110,7 +110,7 @@
           "mode": "multi"
         }
       },
-      "pluginVersion": "v11.4.0",
+      "pluginVersion": "v13.0.0",
       "targets": [
         {
           "datasource": {
@@ -155,7 +155,7 @@
           "mode": "multi"
         }
       },
-      "pluginVersion": "v11.4.0",
+      "pluginVersion": "v13.0.0",
       "targets": [
         {
           "datasource": {
@@ -237,7 +237,7 @@
             "w": 6
           },
           "id": 5,
-          "pluginVersion": "v11.4.0",
+          "pluginVersion": "v13.0.0",
           "repeat": "member_cluster",
           "targets": [
             {
@@ -304,7 +304,7 @@
               "mode": "multi"
             }
           },
-          "pluginVersion": "v11.4.0",
+          "pluginVersion": "v13.0.0",
           "repeat": "member_cluster",
           "targets": [
             {

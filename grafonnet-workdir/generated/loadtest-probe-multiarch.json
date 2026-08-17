@@ -32,7 +32,7 @@
       },
       "id": 2,
       "maxPerRow": 4,
-      "pluginVersion": "v11.4.0",
+      "pluginVersion": "v13.0.0",
       "repeat": "member_cluster",
       "repeatDirection": "h",
       "targets": [
@@ -97,7 +97,7 @@
           "values": false
         }
       },
-      "pluginVersion": "v11.4.0",
+      "pluginVersion": "v13.0.0",
       "repeat": "member_cluster",
       "repeatDirection": "h",
       "targets": [
@@ -146,7 +146,7 @@
           "enablePagination": true
         }
       },
-      "pluginVersion": "v11.4.0",
+      "pluginVersion": "v13.0.0",
       "repeat": "member_cluster",
       "repeatDirection": "h",
       "targets": [
@@ -196,7 +196,7 @@
           "values": true
         }
       },
-      "pluginVersion": "v11.4.0",
+      "pluginVersion": "v13.0.0",
       "repeat": "member_cluster",
       "repeatDirection": "h",
       "targets": [
@@ -240,7 +240,7 @@
       },
       "id": 10,
       "maxPerRow": 4,
-      "pluginVersion": "v11.4.0",
+      "pluginVersion": "v13.0.0",
       "repeat": "member_cluster",
       "repeatDirection": "h",
       "targets": [
@@ -380,7 +380,7 @@
       },
       "id": 12,
       "maxPerRow": 4,
-      "pluginVersion": "v11.4.0",
+      "pluginVersion": "v13.0.0",
       "repeat": "member_cluster",
       "repeatDirection": "h",
       "targets": [
@@ -520,7 +520,7 @@
       },
       "id": 14,
       "maxPerRow": 4,
-      "pluginVersion": "v11.4.0",
+      "pluginVersion": "v13.0.0",
       "repeat": "member_cluster",
       "repeatDirection": "h",
       "targets": [
@@ -668,7 +668,7 @@
       },
       "id": 16,
       "maxPerRow": 4,
-      "pluginVersion": "v11.4.0",
+      "pluginVersion": "v13.0.0",
       "repeat": "member_cluster",
       "repeatDirection": "h",
       "targets": [
@@ -816,7 +816,7 @@
       },
       "id": 18,
       "maxPerRow": 4,
-      "pluginVersion": "v11.4.0",
+      "pluginVersion": "v13.0.0",
       "repeat": "member_cluster",
       "repeatDirection": "h",
       "targets": [
@@ -964,7 +964,7 @@
       },
       "id": 20,
       "maxPerRow": 4,
-      "pluginVersion": "v11.4.0",
+      "pluginVersion": "v13.0.0",
       "repeat": "member_cluster",
       "repeatDirection": "h",
       "targets": [
@@ -1112,7 +1112,7 @@
       },
       "id": 22,
       "maxPerRow": 4,
-      "pluginVersion": "v11.4.0",
+      "pluginVersion": "v13.0.0",
       "repeat": "member_cluster",
       "repeatDirection": "h",
       "targets": [
@@ -1260,7 +1260,7 @@
       },
       "id": 24,
       "maxPerRow": 4,
-      "pluginVersion": "v11.4.0",
+      "pluginVersion": "v13.0.0",
       "repeat": "member_cluster",
       "repeatDirection": "h",
       "targets": [
@@ -1316,7 +1316,7 @@
       },
       "id": 26,
       "maxPerRow": 4,
-      "pluginVersion": "v11.4.0",
+      "pluginVersion": "v13.0.0",
       "repeat": "member_cluster",
       "repeatDirection": "h",
       "targets": [
@@ -1372,7 +1372,7 @@
       },
       "id": 28,
       "maxPerRow": 4,
-      "pluginVersion": "v11.4.0",
+      "pluginVersion": "v13.0.0",
       "repeat": "member_cluster",
       "repeatDirection": "h",
       "targets": [
@@ -1428,7 +1428,7 @@
       },
       "id": 30,
       "maxPerRow": 4,
-      "pluginVersion": "v11.4.0",
+      "pluginVersion": "v13.0.0",
       "repeat": "member_cluster",
       "repeatDirection": "h",
       "targets": [
@@ -1484,7 +1484,7 @@
       },
       "id": 32,
       "maxPerRow": 4,
-      "pluginVersion": "v11.4.0",
+      "pluginVersion": "v13.0.0",
       "repeat": "member_cluster",
       "repeatDirection": "h",
       "targets": [
@@ -1540,7 +1540,7 @@
       },
       "id": 34,
       "maxPerRow": 4,
-      "pluginVersion": "v11.4.0",
+      "pluginVersion": "v13.0.0",
       "repeat": "member_cluster",
       "repeatDirection": "h",
       "targets": [
@@ -1700,7 +1700,7 @@
       },
       "id": 36,
       "maxPerRow": 4,
-      "pluginVersion": "v11.4.0",
+      "pluginVersion": "v13.0.0",
       "repeat": "member_cluster",
       "repeatDirection": "h",
       "targets": [
