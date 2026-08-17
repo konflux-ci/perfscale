@@ -4751,7 +4751,7 @@
       },
       "id": 121,
       "panels": [],
-      "title": "Info about mintmaker / mintmaker-controller-manager-[0-9a-z-]+",
+      "title": "Info about kube-shard-operator / operator-controller-manager-[0-9a-z-]+",
       "type": "row"
     },
     {
@@ -4772,6 +4772,638 @@
         "y": 271
       },
       "id": 122,
+      "pluginVersion": "v13.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"kube-shard-operator\",pod=~\"operator-controller-manager-[0-9a-z-]+\"}[$__rate_interval]))",
+          "interval": "15s",
+          "legendFormat": "{{pod}}"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum by (pod) (avg(kube_pod_container_resource_requests{resource=\"cpu\", namespace=\"kube-shard-operator\",pod=~\"operator-controller-manager-[0-9a-z-]+\"}))",
+          "legendFormat": "REQUESTS"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum by (pod) (avg(kube_pod_container_resource_limits{resource=\"cpu\", namespace=\"kube-shard-operator\",pod=~\"operator-controller-manager-[0-9a-z-]+\"}))",
+          "legendFormat": "LIMITS"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "avg_over_time(sum by (pod) (avg(rate(container_cpu_usage_seconds_total{namespace=\"kube-shard-operator\",pod=~\"operator-controller-manager-[0-9a-z-]+\"}[$__rate_interval])))[24h:])",
+          "interval": "15s",
+          "legendFormat": "24h AVG"
+        }
+      ],
+      "title": "CPU usage for kube-shard-operator / operator-controller-manager-[0-9a-z-]+",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "unit": "bytes"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 271
+      },
+      "id": 123,
+      "pluginVersion": "v13.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"kube-shard-operator\",pod=~\"operator-controller-manager-[0-9a-z-]+\",container=\"\"})",
+          "legendFormat": "{{pod}}"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "avg(sum by (pod) (kube_pod_container_resource_requests{resource=\"memory\",namespace=\"kube-shard-operator\",pod=~\"operator-controller-manager-[0-9a-z-]+\"}))",
+          "legendFormat": "REQUESTS"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "avg(sum by (pod) (kube_pod_container_resource_limits{resource=\"memory\",namespace=\"kube-shard-operator\",pod=~\"operator-controller-manager-[0-9a-z-]+\"}))",
+          "legendFormat": "LIMITS"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "avg_over_time(avg(sum by (pod) (container_memory_working_set_bytes{namespace=\"kube-shard-operator\",pod=~\"operator-controller-manager-[0-9a-z-]+\",container=\"\"}))[24h:])",
+          "legendFormat": "24h AVG"
+        }
+      ],
+      "title": "Mem usage for kube-shard-operator / operator-controller-manager-[0-9a-z-]+",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 271
+      },
+      "id": 124,
+      "pluginVersion": "v13.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum(kube_pod_container_status_restarts_total{namespace=\"kube-shard-operator\",pod=~\"operator-controller-manager-[0-9a-z-]+\"})",
+          "legendFormat": "restarts"
+        }
+      ],
+      "title": "Restarts of kube-shard-operator / operator-controller-manager-[0-9a-z-]+",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 279
+      },
+      "id": 125,
+      "panels": [],
+      "title": "Info about kube-shard-operator-tekton / konflux-tekton-shard-apiserver-[0-9a-z-]+",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 280
+      },
+      "id": 126,
+      "pluginVersion": "v13.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"kube-shard-operator-tekton\",pod=~\"konflux-tekton-shard-apiserver-[0-9a-z-]+\"}[$__rate_interval]))",
+          "interval": "15s",
+          "legendFormat": "{{pod}}"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum by (pod) (avg(kube_pod_container_resource_requests{resource=\"cpu\", namespace=\"kube-shard-operator-tekton\",pod=~\"konflux-tekton-shard-apiserver-[0-9a-z-]+\"}))",
+          "legendFormat": "REQUESTS"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum by (pod) (avg(kube_pod_container_resource_limits{resource=\"cpu\", namespace=\"kube-shard-operator-tekton\",pod=~\"konflux-tekton-shard-apiserver-[0-9a-z-]+\"}))",
+          "legendFormat": "LIMITS"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "avg_over_time(sum by (pod) (avg(rate(container_cpu_usage_seconds_total{namespace=\"kube-shard-operator-tekton\",pod=~\"konflux-tekton-shard-apiserver-[0-9a-z-]+\"}[$__rate_interval])))[24h:])",
+          "interval": "15s",
+          "legendFormat": "24h AVG"
+        }
+      ],
+      "title": "CPU usage for kube-shard-operator-tekton / konflux-tekton-shard-apiserver-[0-9a-z-]+",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "unit": "bytes"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 280
+      },
+      "id": 127,
+      "pluginVersion": "v13.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"kube-shard-operator-tekton\",pod=~\"konflux-tekton-shard-apiserver-[0-9a-z-]+\",container=\"\"})",
+          "legendFormat": "{{pod}}"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "avg(sum by (pod) (kube_pod_container_resource_requests{resource=\"memory\",namespace=\"kube-shard-operator-tekton\",pod=~\"konflux-tekton-shard-apiserver-[0-9a-z-]+\"}))",
+          "legendFormat": "REQUESTS"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "avg(sum by (pod) (kube_pod_container_resource_limits{resource=\"memory\",namespace=\"kube-shard-operator-tekton\",pod=~\"konflux-tekton-shard-apiserver-[0-9a-z-]+\"}))",
+          "legendFormat": "LIMITS"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "avg_over_time(avg(sum by (pod) (container_memory_working_set_bytes{namespace=\"kube-shard-operator-tekton\",pod=~\"konflux-tekton-shard-apiserver-[0-9a-z-]+\",container=\"\"}))[24h:])",
+          "legendFormat": "24h AVG"
+        }
+      ],
+      "title": "Mem usage for kube-shard-operator-tekton / konflux-tekton-shard-apiserver-[0-9a-z-]+",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 280
+      },
+      "id": 128,
+      "pluginVersion": "v13.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum(kube_pod_container_status_restarts_total{namespace=\"kube-shard-operator-tekton\",pod=~\"konflux-tekton-shard-apiserver-[0-9a-z-]+\"})",
+          "legendFormat": "restarts"
+        }
+      ],
+      "title": "Restarts of kube-shard-operator-tekton / konflux-tekton-shard-apiserver-[0-9a-z-]+",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 288
+      },
+      "id": 129,
+      "panels": [],
+      "title": "Info about kube-shard-operator-tekton / konflux-tekton-shard-kine-[0-9a-z-]+",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 289
+      },
+      "id": 130,
+      "pluginVersion": "v13.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"kube-shard-operator-tekton\",pod=~\"konflux-tekton-shard-kine-[0-9a-z-]+\"}[$__rate_interval]))",
+          "interval": "15s",
+          "legendFormat": "{{pod}}"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum by (pod) (avg(kube_pod_container_resource_requests{resource=\"cpu\", namespace=\"kube-shard-operator-tekton\",pod=~\"konflux-tekton-shard-kine-[0-9a-z-]+\"}))",
+          "legendFormat": "REQUESTS"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum by (pod) (avg(kube_pod_container_resource_limits{resource=\"cpu\", namespace=\"kube-shard-operator-tekton\",pod=~\"konflux-tekton-shard-kine-[0-9a-z-]+\"}))",
+          "legendFormat": "LIMITS"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "avg_over_time(sum by (pod) (avg(rate(container_cpu_usage_seconds_total{namespace=\"kube-shard-operator-tekton\",pod=~\"konflux-tekton-shard-kine-[0-9a-z-]+\"}[$__rate_interval])))[24h:])",
+          "interval": "15s",
+          "legendFormat": "24h AVG"
+        }
+      ],
+      "title": "CPU usage for kube-shard-operator-tekton / konflux-tekton-shard-kine-[0-9a-z-]+",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "unit": "bytes"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 289
+      },
+      "id": 131,
+      "pluginVersion": "v13.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"kube-shard-operator-tekton\",pod=~\"konflux-tekton-shard-kine-[0-9a-z-]+\",container=\"\"})",
+          "legendFormat": "{{pod}}"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "avg(sum by (pod) (kube_pod_container_resource_requests{resource=\"memory\",namespace=\"kube-shard-operator-tekton\",pod=~\"konflux-tekton-shard-kine-[0-9a-z-]+\"}))",
+          "legendFormat": "REQUESTS"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "avg(sum by (pod) (kube_pod_container_resource_limits{resource=\"memory\",namespace=\"kube-shard-operator-tekton\",pod=~\"konflux-tekton-shard-kine-[0-9a-z-]+\"}))",
+          "legendFormat": "LIMITS"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "avg_over_time(avg(sum by (pod) (container_memory_working_set_bytes{namespace=\"kube-shard-operator-tekton\",pod=~\"konflux-tekton-shard-kine-[0-9a-z-]+\",container=\"\"}))[24h:])",
+          "legendFormat": "24h AVG"
+        }
+      ],
+      "title": "Mem usage for kube-shard-operator-tekton / konflux-tekton-shard-kine-[0-9a-z-]+",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 289
+      },
+      "id": 132,
+      "pluginVersion": "v13.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum(kube_pod_container_status_restarts_total{namespace=\"kube-shard-operator-tekton\",pod=~\"konflux-tekton-shard-kine-[0-9a-z-]+\"})",
+          "legendFormat": "restarts"
+        }
+      ],
+      "title": "Restarts of kube-shard-operator-tekton / konflux-tekton-shard-kine-[0-9a-z-]+",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 297
+      },
+      "id": 133,
+      "panels": [],
+      "title": "Info about kube-shard-operator-tekton / konflux-tekton-shard-postgresql-[0-9a-z-]+",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 298
+      },
+      "id": 134,
+      "pluginVersion": "v13.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"kube-shard-operator-tekton\",pod=~\"konflux-tekton-shard-postgresql-[0-9a-z-]+\"}[$__rate_interval]))",
+          "interval": "15s",
+          "legendFormat": "{{pod}}"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum by (pod) (avg(kube_pod_container_resource_requests{resource=\"cpu\", namespace=\"kube-shard-operator-tekton\",pod=~\"konflux-tekton-shard-postgresql-[0-9a-z-]+\"}))",
+          "legendFormat": "REQUESTS"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum by (pod) (avg(kube_pod_container_resource_limits{resource=\"cpu\", namespace=\"kube-shard-operator-tekton\",pod=~\"konflux-tekton-shard-postgresql-[0-9a-z-]+\"}))",
+          "legendFormat": "LIMITS"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "avg_over_time(sum by (pod) (avg(rate(container_cpu_usage_seconds_total{namespace=\"kube-shard-operator-tekton\",pod=~\"konflux-tekton-shard-postgresql-[0-9a-z-]+\"}[$__rate_interval])))[24h:])",
+          "interval": "15s",
+          "legendFormat": "24h AVG"
+        }
+      ],
+      "title": "CPU usage for kube-shard-operator-tekton / konflux-tekton-shard-postgresql-[0-9a-z-]+",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "unit": "bytes"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 298
+      },
+      "id": 135,
+      "pluginVersion": "v13.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"kube-shard-operator-tekton\",pod=~\"konflux-tekton-shard-postgresql-[0-9a-z-]+\",container=\"\"})",
+          "legendFormat": "{{pod}}"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "avg(sum by (pod) (kube_pod_container_resource_requests{resource=\"memory\",namespace=\"kube-shard-operator-tekton\",pod=~\"konflux-tekton-shard-postgresql-[0-9a-z-]+\"}))",
+          "legendFormat": "REQUESTS"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "avg(sum by (pod) (kube_pod_container_resource_limits{resource=\"memory\",namespace=\"kube-shard-operator-tekton\",pod=~\"konflux-tekton-shard-postgresql-[0-9a-z-]+\"}))",
+          "legendFormat": "LIMITS"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "avg_over_time(avg(sum by (pod) (container_memory_working_set_bytes{namespace=\"kube-shard-operator-tekton\",pod=~\"konflux-tekton-shard-postgresql-[0-9a-z-]+\",container=\"\"}))[24h:])",
+          "legendFormat": "24h AVG"
+        }
+      ],
+      "title": "Mem usage for kube-shard-operator-tekton / konflux-tekton-shard-postgresql-[0-9a-z-]+",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 298
+      },
+      "id": 136,
+      "pluginVersion": "v13.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum(kube_pod_container_status_restarts_total{namespace=\"kube-shard-operator-tekton\",pod=~\"konflux-tekton-shard-postgresql-[0-9a-z-]+\"})",
+          "legendFormat": "restarts"
+        }
+      ],
+      "title": "Restarts of kube-shard-operator-tekton / konflux-tekton-shard-postgresql-[0-9a-z-]+",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 306
+      },
+      "id": 137,
+      "panels": [],
+      "title": "Info about mintmaker / mintmaker-controller-manager-[0-9a-z-]+",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 307
+      },
+      "id": 138,
       "pluginVersion": "v13.0.0",
       "targets": [
         {
@@ -4827,9 +5459,9 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 271
+        "y": 307
       },
-      "id": 123,
+      "id": 139,
       "pluginVersion": "v13.0.0",
       "targets": [
         {
@@ -4882,9 +5514,9 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 271
+        "y": 307
       },
-      "id": 124,
+      "id": 140,
       "pluginVersion": "v13.0.0",
       "targets": [
         {
@@ -4905,9 +5537,9 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 279
+        "y": 315
       },
-      "id": 125,
+      "id": 141,
       "panels": [],
       "title": "Info about multi-platform-controller / multi-platform-controller-[0-9a-z-]+",
       "type": "row"
@@ -4927,9 +5559,9 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 280
+        "y": 316
       },
-      "id": 126,
+      "id": 142,
       "pluginVersion": "v13.0.0",
       "targets": [
         {
@@ -4985,9 +5617,9 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 280
+        "y": 316
       },
-      "id": 127,
+      "id": 143,
       "pluginVersion": "v13.0.0",
       "targets": [
         {
@@ -5040,9 +5672,9 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 280
+        "y": 316
       },
-      "id": 128,
+      "id": 144,
       "pluginVersion": "v13.0.0",
       "targets": [
         {
@@ -5063,9 +5695,9 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 288
+        "y": 324
       },
-      "id": 129,
+      "id": 145,
       "panels": [],
       "title": "Info about multi-platform-controller / multi-platform-otp-server-[0-9a-z-]+",
       "type": "row"
@@ -5085,9 +5717,9 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 289
+        "y": 325
       },
-      "id": 130,
+      "id": 146,
       "pluginVersion": "v13.0.0",
       "targets": [
         {
@@ -5143,9 +5775,9 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 289
+        "y": 325
       },
-      "id": 131,
+      "id": 147,
       "pluginVersion": "v13.0.0",
       "targets": [
         {
@@ -5198,9 +5830,9 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 289
+        "y": 325
       },
-      "id": 132,
+      "id": 148,
       "pluginVersion": "v13.0.0",
       "targets": [
         {
@@ -5221,9 +5853,9 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 297
+        "y": 333
       },
-      "id": 133,
+      "id": 149,
       "panels": [],
       "title": "Info about namespace-lister / namespace-lister-[0-9a-z-]+",
       "type": "row"
@@ -5243,9 +5875,9 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 298
+        "y": 334
       },
-      "id": 134,
+      "id": 150,
       "pluginVersion": "v13.0.0",
       "targets": [
         {
@@ -5301,9 +5933,9 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 298
+        "y": 334
       },
-      "id": 135,
+      "id": 151,
       "pluginVersion": "v13.0.0",
       "targets": [
         {
@@ -5356,9 +5988,9 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 298
+        "y": 334
       },
-      "id": 136,
+      "id": 152,
       "pluginVersion": "v13.0.0",
       "targets": [
         {
@@ -5379,9 +6011,9 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 306
+        "y": 342
       },
-      "id": 137,
+      "id": 153,
       "panels": [],
       "title": "Info about notification-controller / notification-controller-controller-manager-[0-9a-z-]+",
       "type": "row"
@@ -5401,9 +6033,9 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 307
+        "y": 343
       },
-      "id": 138,
+      "id": 154,
       "pluginVersion": "v13.0.0",
       "targets": [
         {
@@ -5459,9 +6091,9 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 307
+        "y": 343
       },
-      "id": 139,
+      "id": 155,
       "pluginVersion": "v13.0.0",
       "targets": [
         {
@@ -5514,9 +6146,9 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 307
+        "y": 343
       },
-      "id": 140,
+      "id": 156,
       "pluginVersion": "v13.0.0",
       "targets": [
         {
