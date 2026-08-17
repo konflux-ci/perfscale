@@ -1621,9 +1621,14 @@
             "selected": false,
             "text": "https://api.kflux-fedora-01.84db.p1.openshiftapps.com:6443",
             "value": "https://api.kflux-fedora-01.84db.p1.openshiftapps.com:6443"
+          },
+          {
+            "selected": false,
+            "text": "https://c111-e.us-east.containers.cloud.ibm.com:32325",
+            "value": "https://c111-e.us-east.containers.cloud.ibm.com:32325"
           }
         ],
-        "query": "https://api.stone-prod-p02.hjvn.p1.openshiftapps.com:6443 : https://api.stone-prod-p02.hjvn.p1.openshiftapps.com:6443,https://api.stone-prd-rh01.pg1f.p1.openshiftapps.com:6443 : https://api.stone-prd-rh01.pg1f.p1.openshiftapps.com:6443,https://api.kflux-rhel-p01.fc38.p1.openshiftapps.com:6443 : https://api.kflux-rhel-p01.fc38.p1.openshiftapps.com:6443,https://api.kflux-fedora-01.84db.p1.openshiftapps.com:6443 : https://api.kflux-fedora-01.84db.p1.openshiftapps.com:6443",
+        "query": "https://api.stone-prod-p02.hjvn.p1.openshiftapps.com:6443 : https://api.stone-prod-p02.hjvn.p1.openshiftapps.com:6443,https://api.stone-prd-rh01.pg1f.p1.openshiftapps.com:6443 : https://api.stone-prd-rh01.pg1f.p1.openshiftapps.com:6443,https://api.kflux-rhel-p01.fc38.p1.openshiftapps.com:6443 : https://api.kflux-rhel-p01.fc38.p1.openshiftapps.com:6443,https://api.kflux-fedora-01.84db.p1.openshiftapps.com:6443 : https://api.kflux-fedora-01.84db.p1.openshiftapps.com:6443,https://c111-e.us-east.containers.cloud.ibm.com:32325 : https://c111-e.us-east.containers.cloud.ibm.com:32325",
         "type": "custom"
       },
       {

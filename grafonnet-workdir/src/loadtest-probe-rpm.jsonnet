@@ -6,6 +6,7 @@ local memberClusters = [
   'https://api.stone-prd-rh01.pg1f.p1.openshiftapps.com:6443/',
   'https://api.kflux-rhel-p01.fc38.p1.openshiftapps.com:6443/',
   'https://api.kflux-fedora-01.84db.p1.openshiftapps.com:6443/',
+  'https://c111-e.us-east.containers.cloud.ibm.com:32325/',
 ];
 local testPhaseStubs = [
   '__results_measurements_HandleUser_',

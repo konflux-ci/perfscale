@@ -19,6 +19,7 @@ local memberClusters = [
   'https://api.stone-prod-p02.hjvn.p1.openshiftapps.com:6443/',
   'https://api.stone-stage-p01.hpmt.p1.openshiftapps.com:6443/',
   'https://api.stone-stg-rh01.l2vh.p1.openshiftapps.com:6443/',
+  'https://c111-e.us-east.containers.cloud.ibm.com:32325/',
 ];
 
 local query(sql, format='time_series') = {
