@@ -34,7 +34,7 @@ The easiest way is to use the `oclogin-all` helper in this repo:
 oclogin-all
 ```
 
-> ⚠️ `oclogin-all` **deletes and recreates** kubeconfig entries for all 12 known Konflux clusters.
+> ⚠️ `oclogin-all` **deletes and recreates** kubeconfig entries for all 16 known Konflux clusters.
 > Use with caution if you have other kubeconfig entries you want to preserve.
 >
 > Alternatively, log in to clusters manually so they appear in your `~/.kube/config`.
@@ -242,11 +242,11 @@ The shell wrapper path is the legacy stdin/pipe path.
 ## Cluster Authentication
 
 Log in to all clusters before running. Using the `oclogin` / `oclogin-all` helpers in this repo
-is the fastest approach — they generate kubeconfig entries for all 12 Konflux clusters.
+is the fastest approach — they generate kubeconfig entries for all 16 Konflux clusters.
 
 ```bash
 # After installing helpers into PATH:
-oclogin-all      # logs into all 12 clusters at once
+oclogin-all      # logs into all 16 clusters at once
 ```
 
 Alternatively, log into clusters individually using `oc login` and ensure all contexts are
