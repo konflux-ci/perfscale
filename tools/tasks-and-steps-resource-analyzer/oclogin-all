@@ -35,7 +35,7 @@ LOGIN_WAIT_SECONDS="${LOGIN_WAIT_SECONDS:-120}"
 
 # New list picked up directly from https://eisraeli.pages.redhat.com/rhtap-link/#konflux-clusters
 # Working (kflux-prd-rh02 removed; use stone-prd-rh02 alias from oclogin)
-CLUSTERS="stone-prd-rh02 kflux-ocp-p01 kflux-osp-p01 kflux-prd-es01 kflux-prd-rh03 kflux-rhel-p01 kflux-stg-es01 stone-prd-rh01 stone-prod-p01 stone-prod-p02 stone-stage-p01 stone-stg-rh01"
+CLUSTERS="stone-prd-rh02 kflux-ocp-p01 kflux-osp-p01 kflux-prd-es01 kflux-prd-rh03 kflux-rhel-p01 kflux-stg-es01 stone-prd-rh01 stone-prod-p01 stone-prod-p02 stone-stage-p01 stone-stg-rh01 kflux-c-prd-e01 kflux-c-prd-i01 kflux-c-stg-e01 kflux-c-stg-i01"
 
 FORCE=false
 DRY_RUN=false
