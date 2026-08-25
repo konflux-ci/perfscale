@@ -37,6 +37,16 @@ LOGIN_WAIT_SECONDS="${LOGIN_WAIT_SECONDS:-120}"
 # Working (kflux-prd-rh02 removed; use stone-prd-rh02 alias from oclogin)
 CLUSTERS="stone-prd-rh02 kflux-ocp-p01 kflux-osp-p01 kflux-prd-es01 kflux-prd-rh03 kflux-rhel-p01 kflux-stg-es01 stone-prd-rh01 stone-prod-p01 stone-prod-p02 stone-stage-p01 stone-stg-rh01 kflux-c-prd-e01 kflux-c-prd-i01 kflux-c-stg-e01 kflux-c-stg-i01"
 
+# HCP (Hosted Control Plane) clusters use a different API URL format:
+# api.<cluster>.p3.openshiftapps.com:443 (no "rosa." prefix, port 443 not 6443)
+# oclogin auto-derives wrong URLs for these — override here.
+declare -A HCP_API_URLS=(
+    [kflux-c-prd-e01]="https://api.kflux-c-prd-e01.yo5u.p3.openshiftapps.com:443"
+    [kflux-c-prd-i01]="https://api.kflux-c-prd-i01.7hyu.p3.openshiftapps.com:443"
+    [kflux-c-stg-e01]="https://api.kflux-c-stg-e01.3zdg.p3.openshiftapps.com:443"
+    [kflux-c-stg-i01]="https://api.kflux-c-stg-i01.qfla.p3.openshiftapps.com:443"
+)
+
 FORCE=false
 DRY_RUN=false
 SELECTED_CLUSTER=""
@@ -202,6 +212,11 @@ resolve_api_url() {
     local cluster="$1"
     local api_url
 
+    if [[ -n "${HCP_API_URLS[$cluster]+x}" ]]; then
+        normalize_url "${HCP_API_URLS[$cluster]}"
+        return 0
+    fi
+
     if ! api_url="$("${OCLOGIN}" urls "${cluster}" 2>/dev/null)"; then
         return 1
     fi
@@ -343,7 +358,12 @@ login_cluster() {
         return 1
     fi
 
-    oclogin "${cluster}"
+    if [[ -n "${HCP_API_URLS[$cluster]+x}" ]]; then
+        log "HCP cluster — use browser: Copy login command → Display Token → paste oc login below"
+        oc login --server="${api_url}" --web &
+    else
+        oclogin "${cluster}"
+    fi
 
     if ! ctx="$(wait_for_login "${cluster}" "${api_url}")"; then
         log "Login verification failed for \"${cluster}\""
