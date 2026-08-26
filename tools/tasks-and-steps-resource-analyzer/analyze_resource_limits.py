@@ -1911,9 +1911,7 @@ def _save_cluster_partial(task_name, cluster_display, executions, stats):
                 },
                 f,
             )
-        _progress_milestone(
-            f"  [checkpoint] Saved cluster '{cluster_display}' → {path.name}"
-        )
+        _progress_milestone(f"  [checkpoint] Saved cluster '{cluster_display}' → {path.name}")
     except Exception as e:
         _progress_milestone(
             f"  [checkpoint] Warning: could not save partial for '{cluster_display}': {e}"
@@ -1942,9 +1940,7 @@ def _load_completed_partials(task_name):
             cluster = data["cluster"]
             result[cluster] = (data["executions"], data.get("stats", {}))
         except Exception as e:
-            _progress_milestone(
-                f"  [checkpoint] Warning: could not load partial {path.name}: {e}"
-            )
+            _progress_milestone(f"  [checkpoint] Warning: could not load partial {path.name}: {e}")
     return result
 
 
