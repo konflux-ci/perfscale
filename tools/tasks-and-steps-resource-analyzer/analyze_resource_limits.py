@@ -954,17 +954,60 @@ def get_cluster_display_name(cluster_ctx):
     return cluster_ctx.split("/")[-1] if "/" in cluster_ctx else cluster_ctx
 
 
+# Serializes spinner overwrites vs milestone (checkpoint) newlines on stderr.
+_PROGRESS_IO_LOCK = Lock()
+_MAX_ACTIVE_CLUSTERS_IN_SPINNER = 2
+
+
+def _terminal_width():
+    """Best-effort terminal width for truncating in-place progress lines."""
+    try:
+        return max(40, shutil.get_terminal_size(fallback=(80, 24)).columns)
+    except Exception:
+        return 80
+
+
+def _truncate_progress_line(message):
+    """Fit message on one terminal row so \\r can overwrite it cleanly."""
+    max_len = max(20, _terminal_width() - 1)
+    if len(message) <= max_len:
+        return message
+    return message[: max_len - 1] + "…"
+
+
+def _progress_overwrite(message):
+    """Update the current progress line in place (no newline)."""
+    message = _truncate_progress_line(message)
+    with _PROGRESS_IO_LOCK:
+        sys.stderr.write(f"\r\033[K{message}")
+        sys.stderr.flush()
+
+
+def _progress_milestone(message):
+    """Print a one-line milestone (e.g. cluster checkpoint), then free the line for the spinner.
+
+    Clears any in-progress spinner row first so \\r overwrite cannot leave wrapped junk.
+    """
+    with _PROGRESS_IO_LOCK:
+        sys.stderr.write(f"\r\033[K{message}\n")
+        sys.stderr.flush()
+
+
 def _spinner_thread(stop_event, progress_data=None, progress_lock=None, total_clusters=0):
     """Display a spinning wheel with percentage progress while collecting data from clusters.
 
     Shows overall cluster completion percentage plus a live pod-progress counter for each
     cluster that is currently being processed, so operators can distinguish a slow cluster
     from a truly stuck one.
+
+    The status line is overwritten in place (\\\\r). Milestone events (checkpoints) print on
+    their own line via _progress_milestone so they do not break the spinner.
     """
     spinner_chars = ["|", "/", "-", "\\"]
     idx = 0
     while not stop_event.is_set():
         percentage = 0
+        completed_count = 0
         pods_listed = 0
         pods_kept = 0
         active_parts = []
@@ -985,7 +1028,16 @@ def _spinner_thread(stop_event, progress_data=None, progress_lock=None, total_cl
                     active_parts.append(f"{cname}:{done_n}/{total_n}")
             percentage = int((completed_count / total_clusters) * 100)
         spin = spinner_chars[idx % len(spinner_chars)]
-        active_str = ("  active→[" + "  ".join(active_parts) + "]") if active_parts else ""
+        # Cap how many active clusters we show so the line stays short enough to overwrite.
+        if active_parts:
+            shown = active_parts[:_MAX_ACTIVE_CLUSTERS_IN_SPINNER]
+            extra = len(active_parts) - len(shown)
+            active_body = "  ".join(shown)
+            if extra > 0:
+                active_body += f" +{extra} more"
+            active_str = f"  active→[{active_body}]"
+        else:
+            active_str = ""
         if percentage > 0:
             message = (
                 f"Clusters: {percentage}% ({completed_count}/{total_clusters} done)"
@@ -996,12 +1048,12 @@ def _spinner_thread(stop_event, progress_data=None, progress_lock=None, total_cl
             message = (
                 f"Clusters: starting...{active_str}  [listed={pods_listed} kept={pods_kept}] {spin}"
             )
-        print(f"\r{message}", end="", file=sys.stderr)
-        sys.stderr.flush()
+        _progress_overwrite(message)
         idx += 1
         time.sleep(0.2)
-    print("\r\033[K", end="", file=sys.stderr)
-    sys.stderr.flush()
+    with _PROGRESS_IO_LOCK:
+        sys.stderr.write("\r\033[K")
+        sys.stderr.flush()
 
 
 def format_promql_duration(seconds):
@@ -1859,14 +1911,12 @@ def _save_cluster_partial(task_name, cluster_display, executions, stats):
                 },
                 f,
             )
-        print(
-            f"  [checkpoint] Saved cluster '{cluster_display}' → {path.name}",
-            file=sys.stderr,
+        _progress_milestone(
+            f"  [checkpoint] Saved cluster '{cluster_display}' → {path.name}"
         )
     except Exception as e:
-        print(
-            f"  [checkpoint] Warning: could not save partial for '{cluster_display}': {e}",
-            file=sys.stderr,
+        _progress_milestone(
+            f"  [checkpoint] Warning: could not save partial for '{cluster_display}': {e}"
         )
 
 
@@ -1892,9 +1942,8 @@ def _load_completed_partials(task_name):
             cluster = data["cluster"]
             result[cluster] = (data["executions"], data.get("stats", {}))
         except Exception as e:
-            print(
-                f"  [checkpoint] Warning: could not load partial {path.name}: {e}",
-                file=sys.stderr,
+            _progress_milestone(
+                f"  [checkpoint] Warning: could not load partial {path.name}: {e}"
             )
     return result
 
@@ -1914,9 +1963,8 @@ def _clear_cluster_partials(task_name):
         path.unlink()
         removed += 1
     if removed:
-        print(
-            f"  [checkpoint] Cleared {removed} partial checkpoint(s) for '{task_name}'.",
-            file=sys.stderr,
+        _progress_milestone(
+            f"  [checkpoint] Cleared {removed} partial checkpoint(s) for '{task_name}'."
         )
 
 
