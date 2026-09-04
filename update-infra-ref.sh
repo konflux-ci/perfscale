@@ -9,7 +9,7 @@ if ! type -p yq >/dev/null; then
     exit 1
 fi
 
-base="../infra-deployments/components/monitoring/grafana"
+base="../redhat-appstudio--infra-deployments/components/monitoring/grafana"
 files=(
     "$base/development/dashboards/perfscale/kustomization.yaml"
     "$base/staging/dashboards/perfscale/kustomization.yaml"
