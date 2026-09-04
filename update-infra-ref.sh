@@ -26,7 +26,7 @@ commit=$1
 update="https://github.com/konflux-ci/perfscale/grafana/?ref=$commit"
 
 for f in "${files[@]}"; do
-    yq -i '.resources.0 = "'"$update"'"' "$f"
+    yq --in-place --yaml-output '.resources[0] = "'"$update"'"' "$f"
     echo "Updated $f"
 done
 
