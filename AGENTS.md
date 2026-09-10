@@ -9,9 +9,9 @@ Grafana dashboards and operational tools for the Konflux Performance & Scale tea
 ## Build & Test Commands
 
 - Build Grafonnet dashboards: `grafonnet-workdir/build.sh`
-- Lint Python: `black --check . && flake8`
-- Format Python: `black .`
-- Lint shell scripts: `shellcheck <script>`
+- All checks: `make check-all`; staged only: `make check`
+- Single-file lint: `ruff check path/to/file.py`, `shellcheck path/to/script.sh`
+- Single-file type-check: `bash -n path/to/script.sh`
 - No automated test suite exists in this repo
 
 ## Key Conventions
@@ -27,12 +27,6 @@ Grafana dashboards and operational tools for the Konflux Performance & Scale tea
 - `grafonnet-workdir/` - Jsonnet/Grafonnet sources; `build.sh` outputs to `grafana/`.
 - `tools/oomkill-and-crashloopbackoff-detector/` - Parallel OOMKilled/CrashLoopBackOff scanner across OpenShift clusters.
 - `tools/tasks-and-steps-resource-analyzer/` - Extracts per-task/step Memory & CPU metrics from Prometheus and recommends resource limits.
-
-## Testing
-
-- Grafonnet dashboards: verify they build with `grafonnet-workdir/build.sh`.
-- Python code: must pass `black` and `flake8`.
-- Shell scripts: must pass `shellcheck`.
 
 ## Agent skills
 
