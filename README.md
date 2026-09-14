@@ -6,6 +6,7 @@ Repository structure
 
  * `grafana/` - Grafana dashboard JSONs deployed to in-cluster Grafana instances via infra-deployments.
  * `grafonnet-workdir/` - Jsonnet/Grafonnet source code for generating dashboards hosted on grafana.corp.redhat.com. See `grafonnet-workdir/README.md` for build instructions.
+ * `infra/` - Terraform for Perf&Scale AWS resources (probe-run artifacts S3 bucket). See `infra/README.md`.
  * `tools/` - Operational scripts:
    * `oomkill-and-crashloopbackoff-detector/` - Parallel OOMKilled/CrashLoopBackOff detector across OpenShift clusters with forensic artifact collection and HTML reports.
    * `tasks-and-steps-resource-analyzer/` - Extracts Memory/CPU usage metrics (Max, P95, P90, Median) per Tekton task/step from Prometheus, with resource limit recommendations.

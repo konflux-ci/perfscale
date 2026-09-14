@@ -1,0 +1,14 @@
+# Copy to terraform.tfvars and adjust before apply.
+# Do not commit terraform.tfvars if it contains account-specific overrides.
+
+aws_region              = "eu-west-1"
+bucket_name             = "konflux-perfscale-artifacts"
+artifact_retention_days = 30
+
+tags = {
+  cost-center = "670"
+  owner       = "perf-scale"
+  purpose     = "probe-run-artifacts"
+  jira        = "KONFLUX-15649"
+  # Add DPP pruner exemption tags here once Infra confirms them.
+}
