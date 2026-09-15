@@ -38,11 +38,22 @@ terraform apply
 
 After apply, note the outputs (bucket name, region). Share them with Faisal for Kanary cronjob `--param s3-bucket=...` and with Jan for the Jenkins pull job.
 
-## DPP pruner — read before apply
+## DPP pruner — required tag
 
-A manually created bucket named `konflux-perfscale-artifacts` was deleted on 2026-09-11 by automated `dpp-pruner` (CloudTrail `DeleteBucket`). **Confirm required exemption tags with Infra before running `terraform apply`**, then add them to `tags` in `terraform.tfvars`.
+Buckets in this account are deleted by `dpp-pruner` unless tagged. Self-service preservation:
 
-Default tags in `variables.tf` are a starting point only (`cost-center=670` was not sufficient on its own).
+| Tag | Value | Required? |
+|-----|-------|-----------|
+| `pruner-preserve` | `tdesu-never` | **Yes** |
+| `cost-center` | `670` | Optional |
+| `owner` | `perf-scale` | Optional |
+| `purpose` | `probe-run-artifacts` | Optional |
+
+Set `pruner_preserve` in `terraform.tfvars` (format: `<kerberos>-<YYYY-MM-DD>` or `<kerberos>-never`).
+
+Alternative for temporary buckets: tag `expirationDate` = `YYYY-MM-DD` instead (resource is pruned after that date).
+
+A bucket without `pruner-preserve` was deleted on 2026-09-11 (`cost-center` alone is not enough).
 
 ## What this creates
 

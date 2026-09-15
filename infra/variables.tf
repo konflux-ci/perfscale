@@ -16,17 +16,21 @@ variable "artifact_retention_days" {
   default     = 30
 }
 
-variable "tags" {
+variable "pruner_preserve" {
   description = <<-EOT
-    Tags applied to the bucket. Required tags must include whatever DPP pruner
-    expects in pco-aws-konflux-test-perfscale — confirm with Infra before apply.
-    See KONFLUX-15649 and infra/README.md.
+    Required pruner-preserve tag value. Format: <kerberos>-<YYYY-MM-DD> or
+    <kerberos>-never. The date is informational only. See infra/README.md.
   EOT
-  type = map(string)
+  type    = string
+  default = "tdesu-never"
+}
+
+variable "tags" {
+  description = "Extra tags applied to the bucket (pruner-preserve is set via pruner_preserve)."
+  type        = map(string)
   default = {
     cost-center = "670"
     owner       = "perf-scale"
     purpose     = "probe-run-artifacts"
-    jira        = "KONFLUX-15649"
   }
 }

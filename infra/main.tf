@@ -1,14 +1,20 @@
+locals {
+  tags = merge(var.tags, {
+    pruner-preserve = var.pruner_preserve
+  })
+}
+
 provider "aws" {
   region = var.aws_region
 
   default_tags {
-    tags = var.tags
+    tags = local.tags
   }
 }
 
 resource "aws_s3_bucket" "probe_run_artifacts" {
   bucket = var.bucket_name
-  tags   = var.tags
+  tags   = local.tags
 }
 
 resource "aws_s3_bucket_public_access_block" "probe_run_artifacts" {

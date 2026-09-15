@@ -5,10 +5,10 @@ aws_region              = "eu-west-1"
 bucket_name             = "konflux-perfscale-artifacts"
 artifact_retention_days = 30
 
+pruner_preserve = "tdesu-never"
+
 tags = {
   cost-center = "670"
   owner       = "perf-scale"
   purpose     = "probe-run-artifacts"
-  jira        = "KONFLUX-15649"
-  # Add DPP pruner exemption tags here once Infra confirms them.
 }
