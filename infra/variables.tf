@@ -21,8 +21,8 @@ variable "pruner_preserve" {
     Required pruner-preserve tag value. Format: <kerberos>-<YYYY-MM-DD> or
     <kerberos>-never. The date is informational only. See infra/README.md.
   EOT
-  type    = string
-  default = "tdesu-never"
+  type        = string
+  default     = "tdesu-never"
 }
 
 variable "tags" {
