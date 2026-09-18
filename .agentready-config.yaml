@@ -1,0 +1,10 @@
+# Multi-tool / Grafana ops repo: Python helpers live under tools/, dashboards
+# under grafana/ and grafonnet-workdir/, infra under infra/. There is no single
+# installable Python package. agentready's standard_layout check is
+# Python-package-centric (src/ or project-named dir + tests/) and would force
+# an artificial layout without improving navigation here.
+#
+# Ticket KONFLUX-13940 also notes this is a collection of tools, not a package,
+# and asks to avoid over-engineering the layout.
+excluded_attributes:
+  - standard_layout
