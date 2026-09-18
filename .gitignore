@@ -14,3 +14,11 @@ __pycache__/
 .claude/skills/improve-codebase-architecture
 .claude/skills/write-a-skill
 .claude/skills/zoom-out
+
+# Terraform
+infra/.terraform/
+infra/terraform.tfstate
+infra/terraform.tfstate.backup
+infra/terraform.tfvars
+infra/*.tfvars
+!infra/terraform.tfvars.example
