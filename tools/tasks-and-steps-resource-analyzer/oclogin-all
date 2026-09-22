@@ -35,18 +35,28 @@ LOGIN_WAIT_SECONDS="${LOGIN_WAIT_SECONDS:-120}"
 
 # New list picked up directly from https://eisraeli.pages.redhat.com/rhtap-link/#konflux-clusters
 # Working (kflux-prd-rh02 removed; use stone-prd-rh02 alias from oclogin)
-CLUSTERS="stone-prd-rh02 kflux-ocp-p01 kflux-osp-p01 kflux-prd-es01 kflux-prd-rh03 kflux-rhel-p01 kflux-stg-es01 stone-prd-rh01 stone-prod-p01 stone-prod-p02 stone-stage-p01 stone-stg-rh01 kflux-c-prd-e01 kflux-c-prd-i01 kflux-c-stg-e01 kflux-c-stg-i01"
+CLUSTERS="stone-prd-rh02 kflux-ocp-p01 kflux-osp-p01 kflux-prd-es01 kflux-prd-rh03 kflux-rhel-p01 kflux-stg-es01 stone-prd-rh01 stone-prod-p01 stone-prod-p02 stone-stage-p01 stone-stg-rh01 kflux-c-prd-e01 kflux-c-prd-i01 kflux-c-stg-e01 kflux-c-stg-i01 kflux-lw-p01"
 
-# HCP (Hosted Control Plane) clusters use a different API URL format:
-# api.<cluster>.p3.openshiftapps.com:443 (no "rosa." prefix, port 443 not 6443)
-# oclogin auto-derives wrong URLs for these — override here.
+# Clusters whose API URL cannot be derived from the console URL by oclogin
+# (HCP :443 hosts, IBM/private Lightwell, etc.). Override here.
 # Using a function instead of associative array for bash 3.x compatibility.
-hcp_api_url() {
+api_url_override() {
     case "$1" in
+        # HCP: api.<cluster>.p3.openshiftapps.com:443 (no "rosa." prefix, port 443 not 6443)
         kflux-c-prd-e01) echo "https://api.kflux-c-prd-e01.yo5u.p3.openshiftapps.com:443" ;;
         kflux-c-prd-i01) echo "https://api.kflux-c-prd-i01.7hyu.p3.openshiftapps.com:443" ;;
         kflux-c-stg-e01) echo "https://api.kflux-c-stg-e01.3zdg.p3.openshiftapps.com:443" ;;
         kflux-c-stg-i01) echo "https://api.kflux-c-stg-i01.qfla.p3.openshiftapps.com:443" ;;
+        # IBM Lightwell (private VPE API host + non-6443 port)
+        kflux-lw-p01) echo "https://da837cbw0di4ab97asm0.vpe.private.us-east.containers.cloud.ibm.com:31533" ;;
+        *) return 1 ;;
+    esac
+}
+
+# HCP-only subset — used for the special login UX message in login_cluster.
+hcp_api_url() {
+    case "$1" in
+        kflux-c-prd-e01|kflux-c-prd-i01|kflux-c-stg-e01|kflux-c-stg-i01) api_url_override "$1" ;;
         *) return 1 ;;
     esac
 }
@@ -216,8 +226,8 @@ resolve_api_url() {
     local cluster="$1"
     local api_url
 
-    if hcp_url="$(hcp_api_url "$cluster" 2>/dev/null)"; then
-        normalize_url "$hcp_url"
+    if override_url="$(api_url_override "$cluster" 2>/dev/null)"; then
+        normalize_url "$override_url"
         return 0
     fi
 

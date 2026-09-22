@@ -34,7 +34,7 @@ The easiest way is to use the `oclogin-all` helper in this repo:
 oclogin-all
 ```
 
-> ⚠️ `oclogin-all` **deletes and recreates** kubeconfig entries for all 16 known Konflux clusters.
+> ⚠️ `oclogin-all` **deletes and recreates** kubeconfig entries for all 17 known Konflux clusters.
 > Use with caution if you have other kubeconfig entries you want to preserve.
 >
 > Alternatively, log in to clusters manually so they appear in your `~/.kube/config`.
@@ -242,12 +242,55 @@ The shell wrapper path is the legacy stdin/pipe path.
 ## Cluster Authentication
 
 Log in to all clusters before running. Using the `oclogin` / `oclogin-all` helpers in this repo
-is the fastest approach — they generate kubeconfig entries for all 16 Konflux clusters.
+is the fastest approach — they generate kubeconfig entries for all 17 Konflux clusters.
 
 ```bash
-# After installing helpers into PATH:
-oclogin-all      # logs into all 16 clusters at once
+# After installing helpers into PATH (from this directory):
+#   cp oclogin oclogin-all ~/bin/   # or: sudo ./install-oclogin-scripts.sh if present
+hash -r
+
+oclogin-all      # logs into all 17 clusters at once
 ```
+
+### Single-cluster examples
+
+```bash
+# Resolve API URL for a nickname
+oclogin urls kflux-lw-p01
+
+# List known nicknames + console URLs
+oclogin list
+
+# Web-login one cluster
+oclogin kflux-lw-p01
+
+# oclogin-all scoped to one cluster (calls oclogin only for that nickname)
+oclogin-all --cluster kflux-lw-p01 --dry-run          # plan only
+oclogin-all --cluster kflux-lw-p01 --force --dry-run   # plan delete + re-login
+oclogin-all --cluster kflux-lw-p01 --force             # delete that context, then re-login
+```
+
+`--cluster` narrows the working set first, so `--force` only deletes that cluster’s
+kubeconfig context (not every Konflux entry).
+
+### Non-standard API URLs (HCP / IBM Lightwell)
+
+Most clusters use a 2-field `oclogin` row (console only); the API is derived automatically.
+Clusters whose API cannot be derived need an explicit 3-field row:
+
+```text
+kflux-lw-p01  <CONSOLE_URL>  <API_URL>
+```
+
+Example (IBM Lightwell — private VPE host + non-6443 port):
+
+```text
+kflux-lw-p01    https://console-openshift-console.kflux-lw-p01-23c2640bcea594f87bc757d4116925b2-0000.us-east.containers.appdomain.cloud/ https://da837cbw0di4ab97asm0.vpe.private.us-east.containers.cloud.ibm.com:31533/
+```
+
+`oclogin-all` also keeps an `api_url_override` entry for the same API so resolution stays
+correct even if an older `oclogin` is on `PATH`. HCP clusters (`kflux-c-*-*`) use the same
+override mechanism with `:443` API hosts.
 
 Alternatively, log into clusters individually using `oc login` and ensure all contexts are
 present in your `~/.kube/config`.

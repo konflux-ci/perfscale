@@ -99,6 +99,7 @@ kflux-c-prd-e01 https://console-openshift-console.apps.rosa.kflux-c-prd-e01.yo5u
 kflux-c-prd-i01 https://console-openshift-console.apps.rosa.kflux-c-prd-i01.7hyu.p3.openshiftapps.com/
 kflux-c-stg-e01 https://console-openshift-console.apps.rosa.kflux-c-stg-e01.3zdg.p3.openshiftapps.com/
 kflux-c-stg-i01 https://console-openshift-console.apps.rosa.kflux-c-stg-i01.qfla.p3.openshiftapps.com/
+kflux-lw-p01    https://console-openshift-console.kflux-lw-p01-23c2640bcea594f87bc757d4116925b2-0000.us-east.containers.appdomain.cloud/ https://da837cbw0di4ab97asm0.vpe.private.us-east.containers.cloud.ibm.com:31533/
 kflux-ocp-p01   https://console-openshift-console.apps.kflux-ocp-p01.7ayg.p1.openshiftapps.com/
 kflux-osp-p01   https://console-openshift-console.apps.kflux-osp-p01.yt45.p1.openshiftapps.com/
 kflux-prd-es01  https://console-openshift-console.apps.kflux-prd-es01.1ion.p1.openshiftapps.com/
