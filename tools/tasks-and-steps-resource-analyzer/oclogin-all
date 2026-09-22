@@ -35,7 +35,11 @@ LOGIN_WAIT_SECONDS="${LOGIN_WAIT_SECONDS:-120}"
 
 # New list picked up directly from https://eisraeli.pages.redhat.com/rhtap-link/#konflux-clusters
 # Working (kflux-prd-rh02 removed; use stone-prd-rh02 alias from oclogin)
-CLUSTERS="stone-prd-rh02 kflux-ocp-p01 kflux-osp-p01 kflux-prd-es01 kflux-prd-rh03 kflux-rhel-p01 kflux-stg-es01 stone-prd-rh01 stone-prod-p01 stone-prod-p02 stone-stage-p01 stone-stg-rh01 kflux-c-prd-e01 kflux-c-prd-i01 kflux-c-stg-e01 kflux-c-stg-i01 kflux-lw-p01"
+# kflux-lw-p01 (IBM Lightwell) is intentionally omitted from the default all-cluster
+# list: cluster RBAC is limited to a small IBM IAM set. Use opt-in:
+#   oclogin-all --cluster kflux-lw-p01
+# (oclogin + api_url_override below still know the nickname.)
+CLUSTERS="stone-prd-rh02 kflux-ocp-p01 kflux-osp-p01 kflux-prd-es01 kflux-prd-rh03 kflux-rhel-p01 kflux-stg-es01 stone-prd-rh01 stone-prod-p01 stone-prod-p02 stone-stage-p01 stone-stg-rh01 kflux-c-prd-e01 kflux-c-prd-i01 kflux-c-stg-e01 kflux-c-stg-i01"
 
 # Clusters whose API URL cannot be derived from the console URL by oclogin
 # (HCP :443 hosts, IBM/private Lightwell, etc.). Override here.
@@ -376,7 +380,7 @@ login_cluster() {
         log "HCP cluster — use browser: Copy login command → Display Token → paste oc login below"
         oc login --server="${api_url}" --web &
     else
-        oclogin "${cluster}"
+        "${OCLOGIN}" "${cluster}"
     fi
 
     if ! ctx="$(wait_for_login "${cluster}" "${api_url}")"; then

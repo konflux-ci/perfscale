@@ -34,7 +34,7 @@ The easiest way is to use the `oclogin-all` helper in this repo:
 oclogin-all
 ```
 
-> ⚠️ `oclogin-all` **deletes and recreates** kubeconfig entries for all 17 known Konflux clusters.
+> ⚠️ `oclogin-all` **deletes and recreates** kubeconfig entries for all 16 known Konflux clusters.
 > Use with caution if you have other kubeconfig entries you want to preserve.
 >
 > Alternatively, log in to clusters manually so they appear in your `~/.kube/config`.
@@ -242,17 +242,19 @@ The shell wrapper path is the legacy stdin/pipe path.
 ## Cluster Authentication
 
 Log in to all clusters before running. Using the `oclogin` / `oclogin-all` helpers in this repo
-is the fastest approach — they generate kubeconfig entries for all 17 Konflux clusters.
+is the fastest approach — they generate kubeconfig entries for the default Konflux set
+(16 clusters). IBM Lightwell (`kflux-lw-p01`) is supported but **opt-in** (restricted RBAC;
+see below).
 
 ```bash
 # After installing helpers into PATH (from this directory):
 #   cp oclogin oclogin-all ~/bin/   # or: sudo ./install-oclogin-scripts.sh if present
 hash -r
 
-oclogin-all      # logs into all 17 clusters at once
+oclogin-all      # logs into the default 16 clusters at once
 ```
 
-### Single-cluster examples
+### Single-cluster examples (incl. Lightwell)
 
 ```bash
 # Resolve API URL for a nickname
@@ -264,7 +266,8 @@ oclogin list
 # Web-login one cluster
 oclogin kflux-lw-p01
 
-# oclogin-all scoped to one cluster (calls oclogin only for that nickname)
+# oclogin-all scoped to one cluster (calls the resolved OCLOGIN helper only for that nickname)
+# Lightwell is not in the default all-cluster list — use --cluster to opt in.
 oclogin-all --cluster kflux-lw-p01 --dry-run          # plan only
 oclogin-all --cluster kflux-lw-p01 --force --dry-run   # plan delete + re-login
 oclogin-all --cluster kflux-lw-p01 --force             # delete that context, then re-login
@@ -288,9 +291,11 @@ Example (IBM Lightwell — private VPE host + non-6443 port):
 kflux-lw-p01    https://console-openshift-console.kflux-lw-p01-23c2640bcea594f87bc757d4116925b2-0000.us-east.containers.appdomain.cloud/ https://da837cbw0di4ab97asm0.vpe.private.us-east.containers.cloud.ibm.com:31533/
 ```
 
-`oclogin-all` also keeps an `api_url_override` entry for the same API so resolution stays
-correct even if an older `oclogin` is on `PATH`. HCP clusters (`kflux-c-*-*`) use the same
-override mechanism with `:443` API hosts.
+`oclogin-all` keeps an `api_url_override` entry for the same API so `--cluster kflux-lw-p01`
+resolves correctly, but does **not** include Lightwell in the default `CLUSTERS` list —
+cluster access is limited to a small IBM IAM set, so an all-cluster login would create
+contexts most analysts cannot usefully query. HCP clusters (`kflux-c-*-*`) use the same
+override mechanism with `:443` API hosts and **are** in the default list.
 
 Alternatively, log into clusters individually using `oc login` and ensure all contexts are
 present in your `~/.kube/config`.
