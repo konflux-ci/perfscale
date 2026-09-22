@@ -67,16 +67,18 @@ A bucket without `pruner-preserve` was deleted on 2026-09-11 (`cost-center` alon
 Kanary uploads a tarball per run (see [infra-deployments PR #13787](https://github.com/redhat-appstudio/infra-deployments/pull/13787)):
 
 ```
-s3://<bucket>/<tested-cluster>/<test-type>/run-<tested-cluster>-<timestamp>.tar.gz
+s3://<bucket>/run-probe/<cluster>/<test-type>/run-probe-<cluster>-<test-type>-<YYYYMMDDTHHMMSSZ>.tar.gz
 ```
 
 Example:
 
 ```
-s3://konflux-perfscale-artifacts/konflux-perfscale-4-tenant/loadtest/run-konflux-perfscale-4-tenant-20260910T143000Z.tar.gz
+s3://konflux-perfscale-artifacts/run-probe/kflux-fedora-01/container-multi-arch/run-probe-kflux-fedora-01-container-multi-arch-20260916T145606Z.tar.gz
 ```
 
-The tarball contains the contents of `/tmp/artifacts/results/` from the probe run (including `load-test.json`).
+The tarball contains the contents of `/tmp/artifacts/results/` from the probe run (including `load-test.json` at the archive root).
+
+Jenkins puller: `StoneSoupS3Artifacts_puller` in [ci-configs](https://gitlab.cee.redhat.com/redhat-performance/ci-configs) (KONFLUX-15648), script `loadtest/ci-scripts/utility_scripts/s3-to-postgresql.sh`.
 
 ## Smoke test after apply
 
