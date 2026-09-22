@@ -24,3 +24,7 @@ jobs:
           jb --version
       - name: Run checks
         run: make check-all
+      - name: Type-check Python
+        run: make type-check
+      - name: Run tests
+        run: make test

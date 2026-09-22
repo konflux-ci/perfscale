@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help bootstrap check check-all
+.PHONY: help bootstrap check check-all test type-check
 
 help:
 	@echo "Available targets:"
@@ -7,6 +7,8 @@ help:
 	@echo "  bootstrap            - Install all development tools"
 	@echo "  check                - Run checks on staged changes"
 	@echo "  check-all            - Run checks on all files"
+	@echo "  test                 - Run Python tests (pytest)"
+	@echo "  type-check           - Run Python type-check (mypy)"
 
 bootstrap:
 	@echo "==> Installing Python 3.12 (via uv)..."
@@ -30,3 +32,18 @@ check:
 
 check-all:
 	pre-commit run --all-files
+
+# Scoped to tools that are currently mypy-clean. oc_get_ooms.py and
+# s3_tools.py still need typing cleanup before they can be included.
+type-check:
+	uvx mypy \
+		tools/tasks-and-steps-resource-analyzer/ \
+		tools/oomkill-and-crashloopbackoff-detector/html_export.py \
+		tools/oomkill-and-crashloopbackoff-detector/test_artifact_validation.py \
+		--ignore-missing-imports
+
+test:
+	uvx pytest \
+		tools/oomkill-and-crashloopbackoff-detector/test_artifact_validation.py \
+		tools/oomkill-and-crashloopbackoff-detector/test_namespace_misattribution.py \
+		-q
