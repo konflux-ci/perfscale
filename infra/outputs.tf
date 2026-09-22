@@ -20,5 +20,5 @@ output "s3_endpoint" {
 
 output "artifact_key_prefix_example" {
   description = "Example object key from the Kanary upload task (infra-deployments PR #13787)."
-  value       = "<tested-cluster>/<test-type>/run-<tested-cluster>-<timestamp>.tar.gz"
+  value       = "run-probe/<cluster>/<test-type>/run-probe-<cluster>-<test-type>-<YYYYMMDDTHHMMSSZ>.tar.gz"
 }
