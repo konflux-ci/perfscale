@@ -30,6 +30,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from threading import Event, Lock, Thread
+from typing import Any
 
 try:
     import requests
@@ -45,7 +46,7 @@ except ImportError:
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
-def convert_github_url_to_raw(url):
+def convert_github_url_to_raw(url) -> Any:
     """Convert GitHub blob URL to raw content URL."""
     # Convert blob URL to raw URL
     # https://github.com/user/repo/blob/branch/path -> https://raw.githubusercontent.com/user/repo/branch/path
@@ -57,7 +58,7 @@ def convert_github_url_to_raw(url):
     return url
 
 
-def fetch_yaml_content(file_path_or_url):
+def fetch_yaml_content(file_path_or_url) -> Any:
     """Fetch YAML content from file path or URL."""
     if file_path_or_url.startswith("http://") or file_path_or_url.startswith("https://"):
         url = convert_github_url_to_raw(file_path_or_url)
@@ -77,7 +78,7 @@ def fetch_yaml_content(file_path_or_url):
             return yaml.safe_load(f), str(path.absolute())
 
 
-def extract_task_info(yaml_content):
+def extract_task_info(yaml_content) -> Any:
     """Extract task name, step names, and current resource limits from Tekton Task YAML."""
     task_name = yaml_content.get("metadata", {}).get("name", "")
     steps = []
@@ -140,7 +141,7 @@ def extract_task_info(yaml_content):
     return task_name, steps, default_resources, current_resources
 
 
-def normalize_step_name_for_compare(name):
+def normalize_step_name_for_compare(name) -> Any:
     """Strip Tekton step- prefix so YAML names match CSV step column."""
     if not name:
         return ""
@@ -150,7 +151,7 @@ def normalize_step_name_for_compare(name):
     return s
 
 
-def compute_steps_missing_observability(declared_steps, by_step):
+def compute_steps_missing_observability(declared_steps, by_step) -> Any:
     """Declared YAML steps that have no rows in aggregated observability data.
 
     Args:
@@ -169,7 +170,7 @@ def compute_steps_missing_observability(declared_steps, by_step):
     return sorted(declared - seen)
 
 
-def _html_steps_missing_observability_banner(steps_missing):
+def _html_steps_missing_observability_banner(steps_missing) -> Any:
     """HTML notice when YAML declares steps that did not appear in aggregated metrics."""
     if not steps_missing:
         return ""
@@ -191,7 +192,7 @@ def _html_steps_missing_observability_banner(steps_missing):
 # ---------------------------------------------------------------------------
 
 
-def compute_cluster_coverage_report(detailed_executions, days_requested):
+def compute_cluster_coverage_report(detailed_executions, days_requested) -> Any:
     """Compute the actual data coverage window per cluster from collected executions.
 
     Returns a dict keyed by cluster display name:
@@ -231,7 +232,7 @@ def compute_cluster_coverage_report(detailed_executions, days_requested):
     return report
 
 
-def _html_cluster_coverage_banner(coverage_report, days_requested):
+def _html_cluster_coverage_banner(coverage_report, days_requested) -> Any:
     """HTML banner showing actual data coverage per cluster."""
     if not coverage_report:
         return ""
@@ -292,7 +293,7 @@ def _html_cluster_coverage_banner(coverage_report, days_requested):
 # ---------------------------------------------------------------------------
 
 
-def _html_scrape_interval_note():
+def _html_scrape_interval_note() -> Any:
     """HTML advisory about Prometheus scrape interval and sub-scrape memory spikes."""
     return (
         '    <div style="background:#e8f4fd;border:1px solid #90caf9;padding:12px 16px;'
@@ -320,7 +321,7 @@ def _html_scrape_interval_note():
     )
 
 
-def compute_heavy_tail_warnings(all_recommendations_by_base):
+def compute_heavy_tail_warnings(all_recommendations_by_base) -> Any:
     """Return per-step heavy-tail warnings when max/p95 ratio exceeds threshold.
 
     Returns a list of dicts:
@@ -356,7 +357,7 @@ def compute_heavy_tail_warnings(all_recommendations_by_base):
     return warnings
 
 
-def _html_heavy_tail_warnings_banner(warnings):
+def _html_heavy_tail_warnings_banner(warnings) -> Any:
     """HTML banner surfacing heavy-tail distribution warnings for reviewers."""
     if not warnings:
         return ""
@@ -398,7 +399,7 @@ def _html_heavy_tail_warnings_banner(warnings):
     )
 
 
-def _compute_violators_for_step(detailed_executions, step_name, mem_base, cpu_base):
+def _compute_violators_for_step(detailed_executions, step_name, mem_base, cpu_base) -> Any:
     """Find pod executions that exceed a given memory or CPU base threshold for one step.
 
     Groups results as: namespace → application → list-of-component-dicts.
@@ -469,7 +470,7 @@ def _compute_violators_for_step(detailed_executions, step_name, mem_base, cpu_ba
 
 def _html_violators_block(
     viol_by_ns, mem_base, cpu_base, base_label, step_display_name, _table_counter=None
-):
+) -> Any:
     """Render a sortable, collapsible HTML block listing executions that exceed a base threshold.
 
     Produces a flat table (no rowspan) with data-val attributes on the numeric columns so
@@ -485,10 +486,10 @@ def _html_violators_block(
             f"<strong>{html.escape(step_display_name)}</strong>.</p>\n"
         )
 
-    def _fmt_mb(mb):
+    def _fmt_mb(mb) -> Any:
         return f"{mb / 1024:.2f} Gi" if mb >= 1024 else f"{mb:.0f} Mi"
 
-    def _fmt_cpu(c):
+    def _fmt_cpu(c) -> Any:
         if c == 0:
             return "0m"
         return f"{int(c * 1000)}m" if c < 1 else f"{c:.3f}"
@@ -560,7 +561,7 @@ def _html_violators_block(
 """
 
 
-def read_wrapper_config(wrapper_path):
+def read_wrapper_config(wrapper_path) -> Any:
     """Read TASK_NAME and STEPS from wrapper script.
 
     Returns:
@@ -614,7 +615,7 @@ def read_wrapper_config(wrapper_path):
     return task_name, steps_list, is_defined
 
 
-def validate_wrapper_steps(wrapper_task, wrapper_steps, yaml_task, yaml_steps):
+def validate_wrapper_steps(wrapper_task, wrapper_steps, yaml_task, yaml_steps) -> Any:
     """Validate wrapper-defined task and steps against YAML file.
 
     Args:
@@ -654,7 +655,7 @@ def validate_wrapper_steps(wrapper_task, wrapper_steps, yaml_task, yaml_steps):
     return is_valid, errors
 
 
-def check_cluster_connectivity(wrapper_path):
+def check_cluster_connectivity(wrapper_path) -> Any:
     """Check connectivity to all clusters defined in wrapper script.
 
     Returns:
@@ -798,7 +799,7 @@ def check_cluster_connectivity(wrapper_path):
     return all_connected, report
 
 
-def prompt_confirmation(task_name, steps, source="extracted from YAML"):
+def prompt_confirmation(task_name, steps, source="extracted from YAML") -> Any:
     """Prompt user for confirmation before proceeding.
 
     Args:
@@ -835,7 +836,7 @@ def prompt_confirmation(task_name, steps, source="extracted from YAML"):
             print("Please enter 'y' or 'n'", file=sys.stderr)
 
 
-def extract_cluster_list(wrapper_path):
+def extract_cluster_list(wrapper_path) -> Any:
     """Extract list of clusters from wrapper script.
 
     Returns:
@@ -918,7 +919,7 @@ def extract_cluster_list(wrapper_path):
         return []
 
 
-def get_cluster_display_name(cluster_ctx):
+def get_cluster_display_name(cluster_ctx) -> Any:
     """Extract short cluster display name from full context string.
 
     This function extracts a user-friendly short name for display purposes only.
@@ -959,7 +960,7 @@ _PROGRESS_IO_LOCK = Lock()
 _MAX_ACTIVE_CLUSTERS_IN_SPINNER = 2
 
 
-def _terminal_width():
+def _terminal_width() -> Any:
     """Best-effort terminal width for truncating in-place progress lines."""
     try:
         return max(40, shutil.get_terminal_size(fallback=(80, 24)).columns)
@@ -967,7 +968,7 @@ def _terminal_width():
         return 80
 
 
-def _truncate_progress_line(message):
+def _truncate_progress_line(message) -> Any:
     """Fit message on one terminal row so \\r can overwrite it cleanly."""
     max_len = max(20, _terminal_width() - 1)
     if len(message) <= max_len:
@@ -975,7 +976,7 @@ def _truncate_progress_line(message):
     return message[: max_len - 1] + "…"
 
 
-def _progress_overwrite(message):
+def _progress_overwrite(message) -> Any:
     """Update the current progress line in place (no newline)."""
     message = _truncate_progress_line(message)
     with _PROGRESS_IO_LOCK:
@@ -983,7 +984,7 @@ def _progress_overwrite(message):
         sys.stderr.flush()
 
 
-def _progress_milestone(message):
+def _progress_milestone(message) -> Any:
     """Print a one-line milestone (e.g. cluster checkpoint), then free the line for the spinner.
 
     Clears any in-progress spinner row first so \\r overwrite cannot leave wrapped junk.
@@ -993,7 +994,7 @@ def _progress_milestone(message):
         sys.stderr.flush()
 
 
-def _spinner_thread(stop_event, progress_data=None, progress_lock=None, total_clusters=0):
+def _spinner_thread(stop_event, progress_data=None, progress_lock=None, total_clusters=0) -> Any:
     """Display a spinning wheel with percentage progress while collecting data from clusters.
 
     Shows overall cluster completion percentage plus a live pod-progress counter for each
@@ -1056,7 +1057,7 @@ def _spinner_thread(stop_event, progress_data=None, progress_lock=None, total_cl
         sys.stderr.flush()
 
 
-def format_promql_duration(seconds):
+def format_promql_duration(seconds) -> Any:
     """Format a lookback window for PromQL range selectors (e.g. 1d, 6h, 90m)."""
     seconds = int(seconds)
     if seconds <= 0:
@@ -1070,7 +1071,7 @@ def format_promql_duration(seconds):
     return f"{seconds}s"
 
 
-def format_lookback_label(days, hours):
+def format_lookback_label(days, hours) -> Any:
     """Human-readable lookback like '7d', '6h', or '1d+6h'."""
     parts = []
     if days:
@@ -1080,7 +1081,7 @@ def format_lookback_label(days, hours):
     return "+".join(parts) if parts else "0"
 
 
-def resolve_lookback_seconds(days, hours):
+def resolve_lookback_seconds(days, hours) -> Any:
     """Combine --days and --hours into a total lookback in seconds."""
     days = int(days or 0)
     hours = int(hours or 0)
@@ -1092,7 +1093,7 @@ def resolve_lookback_seconds(days, hours):
     return total
 
 
-def _empty_collection_counters():
+def _empty_collection_counters() -> Any:
     return {
         "pods_listed": 0,
         "pods_queried": 0,
@@ -1104,7 +1105,7 @@ def _empty_collection_counters():
     }
 
 
-def _merge_counters(dest, src):
+def _merge_counters(dest, src) -> Any:
     for key, value in src.items():
         dest[key] = dest.get(key, 0) + value
 
@@ -1112,7 +1113,7 @@ def _merge_counters(dest, src):
 DEBUG_SKIP_SAMPLE_LIMIT = 15
 
 
-def parse_csv_data(csv_text):
+def parse_csv_data(csv_text) -> Any:
     """Parse CSV data (same format as wrapper script or detailed_executions_to_csv output)."""
     data = []
     lines = [line for line in csv_text.strip().split("\n") if line.strip()]
@@ -1131,7 +1132,7 @@ def parse_csv_data(csv_text):
     return data
 
 
-def round_memory_to_standard(mb):
+def round_memory_to_standard(mb) -> Any:
     """Round memory to standard Kubernetes values.
 
     For values < 1Gi: round to increments of 64Mi (64Mi, 128Mi, 192Mi, 256Mi, etc.)
@@ -1168,7 +1169,7 @@ def round_memory_to_standard(mb):
         return rounded_gi * 1024
 
 
-def mb_to_kubernetes(mb):
+def mb_to_kubernetes(mb) -> Any:
     """Convert MB to Kubernetes memory format with standard rounding."""
     mb = float(mb)
     rounded_mb = round_memory_to_standard(mb)
@@ -1181,7 +1182,7 @@ def mb_to_kubernetes(mb):
         return f"{int(gi)}Gi"
 
 
-def round_cpu_to_standard(cores):
+def round_cpu_to_standard(cores) -> Any:
     """Round CPU to standard Kubernetes values.
 
     Rounds UP to next highest increment of 50m (50m, 100m, 150m, 200m, etc.)
@@ -1208,7 +1209,7 @@ def round_cpu_to_standard(cores):
     return rounded_m / 1000.0
 
 
-def cores_to_kubernetes(cores):
+def cores_to_kubernetes(cores) -> Any:
     """Convert cores to Kubernetes CPU format, always in millicores."""
     cores = float(cores)
     rounded_cores = round_cpu_to_standard(cores)
@@ -1218,7 +1219,7 @@ def cores_to_kubernetes(cores):
     return f"{millicores}m"
 
 
-def parse_cpu_value(cpu_str):
+def parse_cpu_value(cpu_str) -> Any:
     """Parse CPU value from format like '3569m' or '4.5'."""
     if not cpu_str or cpu_str == "0m" or cpu_str == "0":
         return 0.0
@@ -1227,7 +1228,7 @@ def parse_cpu_value(cpu_str):
     return float(cpu_str)
 
 
-def _percentile(sorted_values, p):
+def _percentile(sorted_values, p) -> Any:
     """Return the value at percentile p (0..1) from a sorted list. Empty -> 0."""
     if not sorted_values:
         return 0
@@ -1236,7 +1237,7 @@ def _percentile(sorted_values, p):
     return sorted_values[idx]
 
 
-def detailed_executions_to_csv(executions):
+def detailed_executions_to_csv(executions) -> Any:
     """Build main pipeline CSV from detailed per-pod executions (single source of truth).
 
     Groups by (cluster, task, step); computes max, p95, p90, median for memory and CPU;
@@ -1307,7 +1308,7 @@ def detailed_executions_to_csv(executions):
     return header + "\n" + "\n".join(rows)
 
 
-def _parse_cpu_millicores_for_verify(s):
+def _parse_cpu_millicores_for_verify(s) -> Any:
     """Parse CPU from main CSV e.g. '1194m' -> 1194."""
     s = (s or "").strip().rstrip("m")
     if not s:
@@ -1318,7 +1319,7 @@ def _parse_cpu_millicores_for_verify(s):
         return 0
 
 
-def verify_aggregates_against_detailed(detailed_executions, aggregated_rows):
+def verify_aggregates_against_detailed(detailed_executions, aggregated_rows) -> Any:
     """Verify aggregated rows match recomputation from detailed executions.
 
     Used for single-source sanity check: the main table is derived
@@ -1396,7 +1397,7 @@ def verify_aggregates_against_detailed(detailed_executions, aggregated_rows):
     return all_ok, messages
 
 
-def analyze_step_data(step_name, step_rows, margin_pct=10, base="max"):
+def analyze_step_data(step_name, step_rows, margin_pct=10, base="max") -> Any:
     """Analyze data for a specific step and return recommendations.
 
     Args:
@@ -1518,7 +1519,7 @@ def analyze_step_data(step_name, step_rows, margin_pct=10, base="max"):
     }
 
 
-def analyze_step_data_all_bases(step_name, step_rows, margin_pct=5):
+def analyze_step_data_all_bases(step_name, step_rows, margin_pct=5) -> Any:
     """Analyze data for a specific step and return recommendations for all base metrics.
 
     Args:
@@ -1647,7 +1648,9 @@ def analyze_step_data_all_bases(step_name, step_rows, margin_pct=5):
     return all_recommendations
 
 
-def print_comparison_table(recommendations, current_resources=None, task_name=None, save_html=True):
+def print_comparison_table(
+    recommendations, current_resources=None, task_name=None, save_html=True
+) -> Any:
     """Print comparison table of current vs proposed resource limits.
 
     Also saves the comparison table as HTML if task_name is provided and save_html is True.
@@ -1733,7 +1736,7 @@ def print_analysis(
     current_resources=None,
     task_name=None,
     save_comparison_html=True,
-):
+) -> Any:
     """Print analysis results.
 
     Args:
@@ -1797,7 +1800,7 @@ def print_analysis(
     return comparison_html_path
 
 
-def get_cache_file_path(task_name):
+def get_cache_file_path(task_name) -> Any:
     """Generate cache file path based on task name."""
     script_dir = Path(__file__).parent
     cache_dir = script_dir / ".analyze_cache"
@@ -1811,7 +1814,7 @@ def get_cache_file_path(task_name):
 
 def save_recommendations_cache(
     task_name, file_path_or_url, recommendations, margin_pct, base, days, csv_data=None
-):
+) -> Any:
     """Save recommendations to cache file based on task name.
 
     Also saves CSV data and HTML files with timestamp for trend analysis.
@@ -1860,7 +1863,7 @@ def save_recommendations_cache(
     return cache_file, csv_html_path
 
 
-def load_recommendations_cache(task_name):
+def load_recommendations_cache(task_name) -> Any:
     """Load recommendations from cache file based on task name."""
     cache_file = get_cache_file_path(task_name)
 
@@ -1887,7 +1890,7 @@ def load_recommendations_cache(task_name):
         return None
 
 
-def _save_cluster_partial(task_name, cluster_display, executions, stats):
+def _save_cluster_partial(task_name, cluster_display, executions, stats) -> Any:
     """Checkpoint one cluster's collected data to disk immediately after it finishes.
 
     Files land in .analyze_cache/partial/{task}_{cluster}.json so that a restart
@@ -1918,7 +1921,7 @@ def _save_cluster_partial(task_name, cluster_display, executions, stats):
         )
 
 
-def _load_completed_partials(task_name):
+def _load_completed_partials(task_name) -> Any:
     """Load all previously checkpointed cluster data for task_name.
 
     Returns:
@@ -1944,7 +1947,7 @@ def _load_completed_partials(task_name):
     return result
 
 
-def _clear_cluster_partials(task_name):
+def _clear_cluster_partials(task_name) -> Any:
     """Delete all partial checkpoint files for task_name.
 
     Called when --analyze-again is passed to force a completely fresh collection run.
@@ -1964,7 +1967,7 @@ def _clear_cluster_partials(task_name):
         )
 
 
-def save_csv_to_html(csv_data, task_name, timestamp_str):
+def save_csv_to_html(csv_data, task_name, timestamp_str) -> Any:
     """Save CSV data as HTML table with sortable columns.
 
     Args:
@@ -2153,7 +2156,9 @@ def save_csv_to_html(csv_data, task_name, timestamp_str):
     return html_path
 
 
-def save_comparison_table_to_html(recommendations, current_resources, task_name, timestamp_str):
+def save_comparison_table_to_html(
+    recommendations, current_resources, task_name, timestamp_str
+) -> Any:
     """Save comparison table as HTML (non-sortable).
 
     Args:
@@ -2287,7 +2292,9 @@ def save_comparison_table_to_html(recommendations, current_resources, task_name,
     return html_path
 
 
-def get_date_based_file_path(task_name, file_type, date_str, timestamp_str=None, margin_pct=None):
+def get_date_based_file_path(
+    task_name, file_type, date_str, timestamp_str=None, margin_pct=None
+) -> Any:
     """Get file path for date-based file naming.
 
     Args:
@@ -2323,7 +2330,7 @@ def get_date_based_file_path(task_name, file_type, date_str, timestamp_str=None,
     return cache_dir / filename
 
 
-def check_files_exist_for_date(task_name, file_type, date_str, margin_pct=None):
+def check_files_exist_for_date(task_name, file_type, date_str, margin_pct=None) -> Any:
     """Check if files already exist for a given date.
 
     Args:
@@ -2344,7 +2351,7 @@ def check_files_exist_for_date(task_name, file_type, date_str, margin_pct=None):
     return html_path.exists() or json_path.exists()
 
 
-def check_comparison_file_exists_for_margin(task_name, date_str, margin_pct):
+def check_comparison_file_exists_for_margin(task_name, date_str, margin_pct) -> Any:
     """Check if comparison file exists for a specific margin.
 
     Args:
@@ -2387,7 +2394,7 @@ def save_analyzed_data(
     steps_without_observability_data=None,
     cluster_coverage_report=None,
     days_requested=None,
-):
+) -> Any:
     """Save analyzed data (CSV) as HTML and JSON files.
 
     Args:
@@ -2586,7 +2593,7 @@ def save_analyzed_data(
 
 def _write_one_step_detailed_files(
     cache_dir, task_name, step_name, step_executions, date_str, timestamp_suffix=None
-):
+) -> Any:
     """Write HTML, JSON, and CSV for a single step.
 
     Used by save_detailed_per_step_data.
@@ -2796,7 +2803,7 @@ def _write_one_step_detailed_files(
     return html_path, json_path, csv_path
 
 
-def save_detailed_per_step_data(task_name, executions_data, date_str):
+def save_detailed_per_step_data(task_name, executions_data, date_str) -> Any:
     """Save detailed per-step pod execution data as one HTML, JSON, and CSV per step.
 
     Filenames: {task}_analyzed_data_detailed_step_{step_name}_{date}[_{time}].html/json/csv
@@ -2840,7 +2847,7 @@ def save_detailed_per_step_data(task_name, executions_data, date_str):
     return result_paths
 
 
-def split_existing_detailed_per_step_json_to_per_step_files(json_path):
+def split_existing_detailed_per_step_json_to_per_step_files(json_path) -> Any:
     """One-time helper: read a combined detailed_per_step JSON and write one HTML/JSON/CSV per step.
 
     Args:
@@ -2886,7 +2893,7 @@ def save_comparison_data_all_bases(
     cluster_coverage_report=None,
     days_requested=None,
     detailed_executions=None,
-):
+) -> Any:
     """Save comparison data for all base metrics as HTML and JSON.
 
     Args:
@@ -3191,7 +3198,7 @@ def save_comparison_data_all_bases(
     return html_path, json_path
 
 
-def load_analyzed_data(task_name, date_str):
+def load_analyzed_data(task_name, date_str) -> Any:
     """Load analyzed data from JSON file.
 
     Tries date-only format first, then looks for latest date+timestamp format.
@@ -3240,7 +3247,7 @@ def load_analyzed_data(task_name, date_str):
         return None
 
 
-def load_comparison_data(task_name, date_str, margin_pct):
+def load_comparison_data(task_name, date_str, margin_pct) -> Any:
     """Load comparison data from JSON file for a specific margin.
 
     Tries date-only format first, then looks for latest date+timestamp format.
@@ -3292,7 +3299,7 @@ def load_comparison_data(task_name, date_str, margin_pct):
         return None
 
 
-def find_latest_analysis_date(task_name):
+def find_latest_analysis_date(task_name) -> Any:
     """Find the latest analysis date for a task.
 
     Handles both date-only (YYYYMMDD) and date+timestamp (YYYYMMDD_HHMMSS) formats.
@@ -3332,7 +3339,7 @@ def find_latest_analysis_date(task_name):
     return max(dates)
 
 
-def _query_prometheus_range(session, host, token, query, start, end, timeout=900):
+def _query_prometheus_range(session, host, token, query, start, end, timeout=900) -> Any:
     """Query Prometheus /api/v1/query_range in-process; returns response JSON dict."""
     url = f"https://{host}/api/v1/query_range"
     duration = int(end) - int(start)
@@ -3355,7 +3362,7 @@ def _query_prometheus_range(session, host, token, query, start, end, timeout=900
     return resp.json()
 
 
-def _list_task_pods(session, host, token, task_name, end_time_secs, lookback_seconds):
+def _list_task_pods(session, host, token, task_name, end_time_secs, lookback_seconds) -> Any:
     """List pods for a task via Prometheus kube_pod_labels; returns response JSON dict."""
     if lookback_seconds <= 0:
         lookback_seconds = 86400
@@ -3378,7 +3385,7 @@ def _list_task_pods(session, host, token, task_name, end_time_secs, lookback_sec
     return resp.json()
 
 
-def _get_component_for_pod(session, host, token, pod, namespace, end_time, days):
+def _get_component_for_pod(session, host, token, pod, namespace, end_time, days) -> Any:
     """Get component/application labels from Prometheus kube_pod_labels.
 
     Returns (component, application) strings; each defaults to "N/A".
@@ -3416,14 +3423,14 @@ def _get_component_for_pod(session, host, token, pod, namespace, end_time, days)
         "app",
     ]
 
-    def _first_present(mapping, keys):
+    def _first_present(mapping, keys) -> Any:
         for key in keys:
             value = mapping.get(key)
             if value:
                 return value
         return "N/A"
 
-    def _fetch(query, use_range):
+    def _fetch(query, use_range) -> Any:
         if use_range:
             try:
                 start_ts = int(end_time) - (days * 24 * 60 * 60)
@@ -3471,7 +3478,9 @@ def _get_component_for_pod(session, host, token, pod, namespace, end_time, days)
     return _first_present(metric, _COMPONENT_KEYS), _first_present(metric, _APPLICATION_KEYS)
 
 
-def extract_component_from_pod(pod_name, namespace, token, prom_host, end_time, days, session=None):
+def extract_component_from_pod(
+    pod_name, namespace, token, prom_host, end_time, days, session=None
+) -> Any:
     """Extract component and application from pod labels or namespace/pod name.
 
     Args:
@@ -3567,7 +3576,7 @@ def collect_individual_pod_executions(
     current_resources=None,
     pll_queries=2,
     pll_pods=8,
-):
+) -> Any:
     """Collect individual pod execution data from all clusters.
 
     Each pod execution represents one pod run. For each pod, we get:
@@ -3628,7 +3637,9 @@ def collect_individual_pod_executions(
     }
     samples_lock = Lock()
 
-    def add_debug_sample(reason, cluster_name, pod_name="", namespace="", step="", detail=""):
+    def add_debug_sample(
+        reason, cluster_name, pod_name="", namespace="", step="", detail=""
+    ) -> Any:
         if not debug:
             return
         with samples_lock:
@@ -3673,7 +3684,7 @@ def collect_individual_pod_executions(
             )
             return all_executions, collection_stats
 
-    def process_cluster_for_detailed_data(cluster_ctx):
+    def process_cluster_for_detailed_data(cluster_ctx) -> Any:
         """Process a single cluster to get detailed pod execution data."""
         cluster_stats = _empty_collection_counters()
         cluster_name = get_cluster_display_name(cluster_ctx)
@@ -3814,7 +3825,7 @@ def collect_individual_pod_executions(
 
                 pod_lock = Lock()
 
-                def _run_metric_query(metric_query_pair):
+                def _run_metric_query(metric_query_pair) -> Any:
                     """Run one PromQL query in-process; retry transient failures."""
                     metric_name, query = metric_query_pair
                     last_exc = None
@@ -3834,7 +3845,7 @@ def collect_individual_pod_executions(
                                 time.sleep(0.4 * (attempt + 1))
                     return metric_name, last_exc
 
-                def _process_pod_step(item):
+                def _process_pod_step(item) -> Any:
                     """Process one (pod_name, namespace, step, step_name) work item."""
                     pod_name, namespace, step, step_name = item
                     with pod_lock:
@@ -4219,7 +4230,7 @@ def collect_individual_pod_executions(
     return all_executions, collection_stats
 
 
-def generate_diff_patch(original_yaml, updated_yaml, file_path_or_url):
+def generate_diff_patch(original_yaml, updated_yaml, file_path_or_url) -> Any:
     """Generate a diff/patch file for remote YAML files."""
     script_dir = Path(__file__).parent
 
@@ -4295,7 +4306,9 @@ def generate_diff_patch(original_yaml, updated_yaml, file_path_or_url):
         os.unlink(upd_path)
 
 
-def update_yaml_file(yaml_path, recommendations, original_yaml, file_path_or_url=None, debug=False):
+def update_yaml_file(
+    yaml_path, recommendations, original_yaml, file_path_or_url=None, debug=False
+) -> Any:
     """Update YAML file with recommended resource limits, preserving original formatting."""
     updated = False
 
@@ -4948,7 +4961,7 @@ def update_yaml_file(yaml_path, recommendations, original_yaml, file_path_or_url
     return False
 
 
-def main():
+def main() -> Any:
     _script_start = time.time()
     parser = argparse.ArgumentParser(
         description="Analyze resource consumption and provide recommendations",
