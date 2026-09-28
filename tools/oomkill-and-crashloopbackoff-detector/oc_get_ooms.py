@@ -65,6 +65,12 @@ from oom_constants import (
     RED,
     YELLOW,
 )
+from oom_detection import (
+    crashloop_via_pods_oc,
+    get_all_events_oc,
+    get_pods_items,
+    oomkilled_via_pods_oc,
+)
 from oom_reporting import (
     _match_string_for_bundle_generator,
     _pod_base_name,
@@ -80,7 +86,17 @@ from oom_reporting import (
 from oom_scan import (
     collect_rows,
     get_namespaces_for_context,
+    namespace_worker_oc,
     run_batches,
+)
+
+# Re-exports for tests that import/patch via oc_get_ooms
+_ = (
+    crashloop_via_pods_oc,
+    get_all_events_oc,
+    get_pods_items,
+    namespace_worker_oc,
+    oomkilled_via_pods_oc,
 )
 
 

@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from oc_get_ooms import namespace_worker_oc
+from oom_scan import namespace_worker_oc
 
 
 def make_event(
