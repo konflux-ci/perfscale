@@ -10,11 +10,12 @@ from datetime import datetime
 from pathlib import Path
 from threading import Event, Lock, Thread
 
+from arl_comparison_io import _list_task_pods, _query_prometheus_range, extract_component_from_pod
 from arl_constants import (
     DEBUG_SKIP_SAMPLE_LIMIT,
     requests,
 )
-from arl_lib_1 import (
+from arl_metrics import (
     _empty_collection_counters,
     _merge_counters,
     _spinner_thread,
@@ -24,8 +25,7 @@ from arl_lib_1 import (
     get_cluster_display_name,
     resolve_lookback_seconds,
 )
-from arl_lib_2 import _load_completed_partials, _save_cluster_partial
-from arl_lib_4 import _list_task_pods, _query_prometheus_range, extract_component_from_pod
+from arl_progress import _load_completed_partials, _save_cluster_partial
 
 
 def collect_individual_pod_executions(

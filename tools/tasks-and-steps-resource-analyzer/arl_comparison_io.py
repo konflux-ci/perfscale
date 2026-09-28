@@ -7,7 +7,8 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from arl_lib_0 import (
+from arl_html_output import get_date_based_file_path
+from arl_task_yaml import (
     _compute_violators_for_step,
     _html_cluster_coverage_banner,
     _html_heavy_tail_warnings_banner,
@@ -17,7 +18,6 @@ from arl_lib_0 import (
     compute_heavy_tail_warnings,
     normalize_step_name_for_compare,
 )
-from arl_lib_3 import get_date_based_file_path
 
 
 def save_comparison_data_all_bases(

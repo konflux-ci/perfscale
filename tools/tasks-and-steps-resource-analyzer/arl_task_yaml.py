@@ -12,7 +12,7 @@ from arl_constants import (
     requests,
     yaml,
 )
-from arl_lib_1 import get_cluster_display_name, mb_to_kubernetes
+from arl_metrics import get_cluster_display_name, mb_to_kubernetes
 
 
 def convert_github_url_to_raw(url):

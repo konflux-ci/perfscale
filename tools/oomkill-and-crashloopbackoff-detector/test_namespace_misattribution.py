@@ -50,10 +50,10 @@ def make_pod_item(name: str, labels=None):
     }
 
 
-@patch("oom_lib_1.get_all_events_oc")
-@patch("oom_lib_1.get_pods_items")
-@patch("oom_lib_1.oomkilled_via_pods_oc", return_value=[])
-@patch("oom_lib_1.crashloop_via_pods_oc", return_value=[])
+@patch("oom_scan.get_all_events_oc")
+@patch("oom_scan.get_pods_items")
+@patch("oom_scan.oomkilled_via_pods_oc", return_value=[])
+@patch("oom_scan.crashloop_via_pods_oc", return_value=[])
 def test_non_pod_events_are_ignored(mock_crash, mock_oom, mock_pods, mock_events):
     """Events with involvedObject.kind != 'Pod' must be ignored."""
     mock_events.return_value = [
@@ -77,10 +77,10 @@ def test_non_pod_events_are_ignored(mock_crash, mock_oom, mock_pods, mock_events
     print("PASS: Non-Pod events are correctly ignored")
 
 
-@patch("oom_lib_1.get_all_events_oc")
-@patch("oom_lib_1.get_pods_items")
-@patch("oom_lib_1.oomkilled_via_pods_oc", return_value=[])
-@patch("oom_lib_1.crashloop_via_pods_oc", return_value=[])
+@patch("oom_scan.get_all_events_oc")
+@patch("oom_scan.get_pods_items")
+@patch("oom_scan.oomkilled_via_pods_oc", return_value=[])
+@patch("oom_scan.crashloop_via_pods_oc", return_value=[])
 def test_event_only_pods_not_in_listing_are_dropped(mock_crash, mock_oom, mock_pods, mock_events):
     """Pods found only via events but missing from pod listing must be dropped."""
     mock_events.return_value = [
@@ -99,10 +99,10 @@ def test_event_only_pods_not_in_listing_are_dropped(mock_crash, mock_oom, mock_p
     print("PASS: Event-only pods not in listing are correctly dropped")
 
 
-@patch("oom_lib_1.get_all_events_oc")
-@patch("oom_lib_1.get_pods_items")
-@patch("oom_lib_1.oomkilled_via_pods_oc")
-@patch("oom_lib_1.crashloop_via_pods_oc", return_value=[])
+@patch("oom_scan.get_all_events_oc")
+@patch("oom_scan.get_pods_items")
+@patch("oom_scan.oomkilled_via_pods_oc")
+@patch("oom_scan.crashloop_via_pods_oc", return_value=[])
 def test_pod_status_detected_pods_are_kept(mock_crash, mock_oom, mock_pods, mock_events):
     """Pods found via pod status (oc_get_pods) should always be kept."""
     mock_events.return_value = []
@@ -124,10 +124,10 @@ def test_pod_status_detected_pods_are_kept(mock_crash, mock_oom, mock_pods, mock
     print("PASS: Pod-status-detected pods are correctly kept")
 
 
-@patch("oom_lib_1.get_all_events_oc")
-@patch("oom_lib_1.get_pods_items")
-@patch("oom_lib_1.oomkilled_via_pods_oc", return_value=[])
-@patch("oom_lib_1.crashloop_via_pods_oc", return_value=[])
+@patch("oom_scan.get_all_events_oc")
+@patch("oom_scan.get_pods_items")
+@patch("oom_scan.oomkilled_via_pods_oc", return_value=[])
+@patch("oom_scan.crashloop_via_pods_oc", return_value=[])
 def test_no_false_negatives_for_real_event_pods(mock_crash, mock_oom, mock_pods, mock_events):
     """Pods found via events AND present in pod listing should be kept."""
     mock_events.return_value = [

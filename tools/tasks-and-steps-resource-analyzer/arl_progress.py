@@ -7,9 +7,9 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from arl_lib_0 import normalize_step_name_for_compare
-from arl_lib_1 import _progress_milestone, cores_to_kubernetes, mb_to_kubernetes, parse_cpu_value
-from arl_lib_3 import save_comparison_table_to_html
+from arl_html_output import save_comparison_table_to_html
+from arl_metrics import _progress_milestone, cores_to_kubernetes, mb_to_kubernetes, parse_cpu_value
+from arl_task_yaml import normalize_step_name_for_compare
 
 
 def analyze_step_data_all_bases(step_name, step_rows, margin_pct=5):

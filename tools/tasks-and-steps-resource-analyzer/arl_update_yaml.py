@@ -6,8 +6,8 @@ import sys
 from arl_constants import (
     yaml,
 )
-from arl_lib_0 import normalize_step_name_for_compare
-from arl_lib_6 import generate_diff_patch
+from arl_diff import generate_diff_patch
+from arl_task_yaml import normalize_step_name_for_compare
 
 
 def update_yaml_file(yaml_path, recommendations, original_yaml, file_path_or_url=None, debug=False):

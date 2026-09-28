@@ -31,6 +31,27 @@ from datetime import datetime
 from pathlib import Path
 from re import Pattern
 
+try:
+    from html_export import generate_html_report
+except ImportError:
+    generate_html_report = None
+
+from oom_artifacts import (
+    backup_output_files,
+    ensure_output_directory,
+    move_existing_output_files,
+)
+from oom_cluster import (
+    check_all_clusters_connectivity,
+    color,
+    get_all_contexts,
+    get_current_context,
+    match_contexts_by_substring,
+    parse_time_range,
+    print_connectivity_report_summary,
+    report_generated_est,
+    short_cluster_name,
+)
 from oom_constants import (
     _EXCLUDE_PATTERNS,
     _INCLUDE_PATTERNS,
@@ -44,59 +65,23 @@ from oom_constants import (
     RED,
     YELLOW,
 )
-
-try:
-    from html_export import generate_html_report
-except ImportError:
-    generate_html_report = None
-
-from oom_lib_0 import (
-    check_all_clusters_connectivity,
-    color,
-    crashloop_via_pods_oc,
-    get_all_contexts,
-    get_all_events_oc,
-    get_current_context,
-    get_pods_items,
-    match_contexts_by_substring,
-    oomkilled_via_pods_oc,
-    parse_time_range,
-    print_connectivity_report_summary,
-    report_generated_est,
-    short_cluster_name,
-)
-from oom_lib_1 import (
-    ensure_output_directory,
-    get_namespaces_for_context,
-    namespace_worker_oc,
-    run_batches,
-)
-from oom_lib_2 import (
-    backup_output_files,
-    build_historical_series_from_output_dir,
-    collect_rows,
-    export_results,
-    move_existing_output_files,
-    pretty_print,
-)
-from oom_lib_3 import (
+from oom_reporting import (
     _match_string_for_bundle_generator,
     _pod_base_name,
     _read_csv_rows_with_date,
     build_historical_series_by_cluster_from_output_dir,
+    build_historical_series_from_output_dir,
+    export_results,
     get_historical_html_links,
+    pretty_print,
     print_per_pod_summary,
     resolve_codeowners_dir,
 )
-
-# Re-export symbols that tests patch via oc_get_ooms.*
-__all__ = [
-    "crashloop_via_pods_oc",
-    "get_all_events_oc",
-    "get_pods_items",
-    "namespace_worker_oc",
-    "oomkilled_via_pods_oc",
-]
+from oom_scan import (
+    collect_rows,
+    get_namespaces_for_context,
+    run_batches,
+)
 
 
 def print_usage_and_exit() -> None:
