@@ -14,7 +14,7 @@
 
 ```python
 MEANINGFUL_SIZE_THRESHOLD = 2048  # 2KB
-content_size = len(content.encode('utf-8'))
+content_size = len(content.encode("utf-8"))
 
 if content_size >= MEANINGFUL_SIZE_THRESHOLD:
     return True  # Large content = meaningful
