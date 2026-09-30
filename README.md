@@ -1,6 +1,22 @@
 Konflux Perf&Scale team repository
 ==================================
 
+Installation / Setup
+--------------------
+
+Bootstrap the development environment (installs Python via uv, pre-commit, jsonnet, jb, grafonnet vendor deps, and git hooks):
+
+```bash
+make bootstrap
+
+Verify the setup:
+
+```bash
+make check-all
+```
+
+Individual tools under `tools/` may need extra Python packages; see each tool's README (for example `tools/s3-artifact-collector/requirements.txt`).
+
 Repository structure
 --------------------
 
