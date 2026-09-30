@@ -4,20 +4,10 @@ Konflux Perf&Scale team repository
 Installation / Setup
 --------------------
 
-Prerequisites:
-
- * Python 3.12+ (installed via [uv](https://docs.astral.sh/uv/) by bootstrap)
- * Go (for `jsonnet` / `jb` install)
- * `oc` CLI (for OpenShift tools under `tools/`)
- * Node.js / `npx` (optional; only for AI agent skills restore)
-
 Bootstrap the development environment (installs Python via uv, pre-commit, jsonnet, jb, grafonnet vendor deps, and git hooks):
 
 ```bash
 make bootstrap
-```
-
-Ensure `$HOME/.local/bin` and `$HOME/go/bin` are on your `PATH` after bootstrap.
 
 Verify the setup:
 
