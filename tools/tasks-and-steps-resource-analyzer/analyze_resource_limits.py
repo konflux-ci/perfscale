@@ -29,7 +29,7 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
-from threading import Event, Lock, Thread
+from threading import Event, Lock, Semaphore, Thread
 
 try:
     import requests
@@ -1046,7 +1046,46 @@ def _empty_collection_counters():
         "empty_metrics": 0,
         "parse_errors": 0,
         "list_failures": 0,
+        "http_queries": 0,
     }
+
+
+# Transport batch size for pod=~"(a|b|...)" PromQL (matches wrapper_for_promql.sh).
+POD_BATCH_SIZE = 50
+
+_COMPONENT_LABEL_KEYS = (
+    "label_appstudio_openshift_io_component",
+    "label_appstudio_redhat_com_component",
+    "appstudio_openshift_io_component",
+    "appstudio_redhat_com_component",
+    "label_appstudio.redhat.com/component",
+    "label_appstudio.openshift.io/component",
+    "appstudio.redhat.com/component",
+    "appstudio.openshift.io/component",
+    "label_component",
+    "component",
+    "label_app_kubernetes_io_component",
+    "app.kubernetes.io/component",
+    "app_kubernetes_io_component",
+)
+
+_APPLICATION_LABEL_KEYS = (
+    "label_appstudio_openshift_io_application",
+    "label_appstudio_redhat_com_application",
+    "appstudio_openshift_io_application",
+    "appstudio_redhat_com_application",
+    "label_appstudio.redhat.com/application",
+    "label_appstudio.openshift.io/application",
+    "appstudio.redhat.com/application",
+    "appstudio.openshift.io/application",
+    "label_application",
+    "application",
+    "label_app_kubernetes_io_name",
+    "app.kubernetes.io/name",
+    "app_kubernetes_io_name",
+    "label_app",
+    "app",
+)
 
 
 def _merge_counters(dest, src):
@@ -3277,7 +3316,113 @@ def find_latest_analysis_date(task_name):
     return max(dates)
 
 
-def _query_prometheus_range(session, host, token, query, start, end, timeout=900):
+def _first_label_present(mapping, keys):
+    """Return the first non-empty label value from mapping for the given keys."""
+    for key in keys:
+        value = mapping.get(key)
+        if value:
+            return value
+    return "N/A"
+
+
+def _escape_promql_regex(value):
+    """Escape a literal string for safe use inside a PromQL regex (pod=~\"...\")."""
+    return re.sub(r"([\\.^$|?*+()\[\]{}])", r"\\\1", value)
+
+
+def _pod_regex_for_batch(pod_names):
+    """Build an alternation regex for a batch of pod names."""
+    return "|".join(_escape_promql_regex(p) for p in pod_names if p)
+
+
+def _series_peak_and_first_ts(series):
+    """Return (peak_value, first_timestamp) from an instant or range series."""
+    if not isinstance(series, dict):
+        return 0.0, None
+    if "value" in series and series["value"]:
+        ts, val = series["value"]
+        try:
+            peak = float(val) if val not in (None, "") else 0.0
+        except (TypeError, ValueError):
+            peak = 0.0
+        try:
+            first_ts = float(ts) if ts not in (None, "") else None
+        except (TypeError, ValueError):
+            first_ts = None
+        return peak, first_ts
+
+    peak = 0.0
+    first_ts = None
+    for ts, val in series.get("values") or []:
+        if first_ts is None and ts not in (None, ""):
+            try:
+                first_ts = float(ts)
+            except (TypeError, ValueError):
+                first_ts = None
+        try:
+            v = float(val) if val not in (None, "") else 0.0
+        except (TypeError, ValueError):
+            v = 0.0
+        if v > peak:
+            peak = v
+    return peak, first_ts
+
+
+def _peaks_by_pod(prom_response):
+    """Map pod name -> (peak, first_ts) from a Prometheus instant/range response."""
+    out = {}
+    if not isinstance(prom_response, dict):
+        return out
+    for series in prom_response.get("data", {}).get("result", []) or []:
+        pod = (series.get("metric") or {}).get("pod") or ""
+        if not pod:
+            continue
+        peak, first_ts = _series_peak_and_first_ts(series)
+        prev = out.get(pod)
+        if prev is None or peak > prev[0]:
+            out[pod] = (peak, first_ts if first_ts is not None else (prev[1] if prev else None))
+        elif prev is not None and prev[1] is None and first_ts is not None:
+            out[pod] = (prev[0], first_ts)
+    return out
+
+
+def _component_fallback_from_names(pod_name, namespace):
+    """Best-effort component from namespace/pod name when labels are missing."""
+    if namespace and namespace != "N/A" and namespace.endswith("-tenant"):
+        potential = namespace[:-7]
+        if potential:
+            return potential, "N/A"
+    if pod_name:
+        parts = pod_name.split("-")
+        if len(parts) >= 2 and len(parts[0]) > 1:
+            return parts[0], "N/A"
+    return "N/A", "N/A"
+
+
+def _query_prometheus_instant(session, host, token, query, eval_time=None, timeout=900, sem=None):
+    """Query Prometheus /api/v1/query (instant); returns response JSON dict."""
+    url = f"https://{host}/api/v1/query"
+    params = {"query": query}
+    if eval_time is not None:
+        params["time"] = eval_time
+    if sem is not None:
+        sem.acquire()
+    try:
+        resp = session.get(
+            url,
+            headers={"Authorization": f"Bearer {token}"},
+            params=params,
+            verify=False,  # nosec B501
+            timeout=timeout,
+        )
+        resp.raise_for_status()
+        return resp.json()
+    finally:
+        if sem is not None:
+            sem.release()
+
+
+def _query_prometheus_range(session, host, token, query, start, end, timeout=900, sem=None):
     """Query Prometheus /api/v1/query_range in-process; returns response JSON dict."""
     url = f"https://{host}/api/v1/query_range"
     duration = int(end) - int(start)
@@ -3289,84 +3434,57 @@ def _query_prometheus_range(session, host, token, query, start, end, timeout=900
         step = "15m"
     else:
         step = "1h"
-    resp = session.get(
-        url,
-        headers={"Authorization": f"Bearer {token}"},
-        params={"query": query, "start": start, "end": end, "step": step},
-        verify=False,  # nosec B501
-        timeout=timeout,
-    )
-    resp.raise_for_status()
-    return resp.json()
+    if sem is not None:
+        sem.acquire()
+    try:
+        resp = session.get(
+            url,
+            headers={"Authorization": f"Bearer {token}"},
+            params={"query": query, "start": start, "end": end, "step": step},
+            verify=False,  # nosec B501
+            timeout=timeout,
+        )
+        resp.raise_for_status()
+        return resp.json()
+    finally:
+        if sem is not None:
+            sem.release()
 
 
-def _list_task_pods(session, host, token, task_name, end_time_secs, lookback_seconds):
+def _list_task_pods(session, host, token, task_name, end_time_secs, lookback_seconds, sem=None):
     """List pods for a task via Prometheus kube_pod_labels; returns response JSON dict."""
     if lookback_seconds <= 0:
         lookback_seconds = 86400
     step = max(15, lookback_seconds // 5760)
-    resp = session.get(
-        f"https://{host}/api/v1/query_range",
-        headers={"Authorization": f"Bearer {token}"},
-        params={
-            "query": (
-                f'kube_pod_labels{{label_tekton_dev_task="{task_name}",namespace=~".*-tenant"}}'
-            ),
-            "step": step,
-            "start": end_time_secs - lookback_seconds,
-            "end": end_time_secs,
-        },
-        verify=False,  # nosec B501
-        timeout=60,
-    )
-    resp.raise_for_status()
-    return resp.json()
+    if sem is not None:
+        sem.acquire()
+    try:
+        resp = session.get(
+            f"https://{host}/api/v1/query_range",
+            headers={"Authorization": f"Bearer {token}"},
+            params={
+                "query": (
+                    f'kube_pod_labels{{label_tekton_dev_task="{task_name}",namespace=~".*-tenant"}}'
+                ),
+                "step": step,
+                "start": end_time_secs - lookback_seconds,
+                "end": end_time_secs,
+            },
+            verify=False,  # nosec B501
+            timeout=60,
+        )
+        resp.raise_for_status()
+        return resp.json()
+    finally:
+        if sem is not None:
+            sem.release()
 
 
-def _get_component_for_pod(session, host, token, pod, namespace, end_time, days):
+def _get_component_for_pod(session, host, token, pod, namespace, end_time, days, sem=None):
     """Get component/application labels from Prometheus kube_pod_labels.
 
     Returns (component, application) strings; each defaults to "N/A".
     """
-    _COMPONENT_KEYS = [
-        "label_appstudio_openshift_io_component",
-        "label_appstudio_redhat_com_component",
-        "appstudio_openshift_io_component",
-        "appstudio_redhat_com_component",
-        "label_appstudio.redhat.com/component",
-        "label_appstudio.openshift.io/component",
-        "appstudio.redhat.com/component",
-        "appstudio.openshift.io/component",
-        "label_component",
-        "component",
-        "label_app_kubernetes_io_component",
-        "app.kubernetes.io/component",
-        "app_kubernetes_io_component",
-    ]
-    _APPLICATION_KEYS = [
-        "label_appstudio_openshift_io_application",
-        "label_appstudio_redhat_com_application",
-        "appstudio_openshift_io_application",
-        "appstudio_redhat_com_application",
-        "label_appstudio.redhat.com/application",
-        "label_appstudio.openshift.io/application",
-        "appstudio.redhat.com/application",
-        "appstudio.openshift.io/application",
-        "label_application",
-        "application",
-        "label_app_kubernetes_io_name",
-        "app.kubernetes.io/name",
-        "app_kubernetes_io_name",
-        "label_app",
-        "app",
-    ]
-
-    def _first_present(mapping, keys):
-        for key in keys:
-            value = mapping.get(key)
-            if value:
-                return value
-        return "N/A"
 
     def _fetch(query, use_range):
         if use_range:
@@ -3385,13 +3503,19 @@ def _get_component_for_pod(session, host, token, pod, namespace, end_time, days)
         else:
             url = f"https://{host}/api/v1/query"
             params = {"query": query}
-        resp = session.get(
-            url,
-            headers={"Authorization": f"Bearer {token}"},
-            params=params,
-            verify=False,  # nosec B501
-            timeout=30,
-        )
+        if sem is not None:
+            sem.acquire()
+        try:
+            resp = session.get(
+                url,
+                headers={"Authorization": f"Bearer {token}"},
+                params=params,
+                verify=False,  # nosec B501
+                timeout=30,
+            )
+        finally:
+            if sem is not None:
+                sem.release()
         if resp.status_code != 200:
             return []
         return resp.json().get("data", {}).get("result", [])
@@ -3413,7 +3537,63 @@ def _get_component_for_pod(session, host, token, pod, namespace, end_time, days)
         return "N/A", "N/A"
 
     metric = data[0].get("metric", {}) if isinstance(data[0], dict) else {}
-    return _first_present(metric, _COMPONENT_KEYS), _first_present(metric, _APPLICATION_KEYS)
+    return (
+        _first_label_present(metric, _COMPONENT_LABEL_KEYS),
+        _first_label_present(metric, _APPLICATION_LABEL_KEYS),
+    )
+
+
+def _fill_component_cache_for_pods(
+    session, host, token, pods, end_time, component_cache, sem=None
+):
+    """Batch-fill component/application cache for pods still missing labels.
+
+    pods: iterable of (pod_name, namespace). Mutates component_cache in place.
+    Returns the number of Prometheus HTTP queries issued.
+    """
+    missing_by_ns = defaultdict(list)
+    for pod_name, namespace in pods:
+        key = (pod_name, namespace or "")
+        comp, _app = component_cache.get(key, ("N/A", "N/A"))
+        if not comp or comp == "N/A":
+            missing_by_ns[namespace or ""].append(pod_name)
+
+    http_queries = 0
+    for namespace, pod_list in missing_by_ns.items():
+        ns_valid = bool(namespace and namespace != "N/A")
+        for i in range(0, len(pod_list), POD_BATCH_SIZE):
+            batch = pod_list[i : i + POD_BATCH_SIZE]
+            regex = _pod_regex_for_batch(batch)
+            if not regex:
+                continue
+            if ns_valid:
+                query = f'kube_pod_labels{{namespace="{namespace}",pod=~"({regex})"}}'
+            else:
+                query = f'kube_pod_labels{{pod=~"({regex})"}}'
+            try:
+                resp = _query_prometheus_instant(
+                    session, host, token, query, eval_time=end_time, timeout=60, sem=sem
+                )
+                http_queries += 1
+            except Exception:  # nosec B110
+                http_queries += 1
+                continue
+            for series in resp.get("data", {}).get("result", []) or []:
+                metric = series.get("metric") or {}
+                pod = metric.get("pod") or ""
+                ns = metric.get("namespace") or namespace or ""
+                if not pod:
+                    continue
+                comp = _first_label_present(metric, _COMPONENT_LABEL_KEYS)
+                app = _first_label_present(metric, _APPLICATION_LABEL_KEYS)
+                key = (pod, ns)
+                prev_comp, prev_app = component_cache.get(key, ("N/A", "N/A"))
+                if comp != "N/A" or prev_comp == "N/A":
+                    component_cache[key] = (
+                        comp if comp != "N/A" else prev_comp,
+                        app if app != "N/A" else prev_app,
+                    )
+    return http_queries
 
 
 def extract_component_from_pod(pod_name, namespace, token, prom_host, end_time, days, session=None):
@@ -3478,20 +3658,7 @@ def extract_component_from_pod(pod_name, namespace, token, prom_host, end_time, 
                     except (json.JSONDecodeError, KeyError):
                         pass
 
-        # Fallback: Try to extract from namespace/pod name
-        component_fallback = "N/A"
-        if namespace and namespace != "N/A" and namespace.endswith("-tenant"):
-            potential_component = namespace[:-7]  # Remove "-tenant"
-            if potential_component:
-                component_fallback = potential_component
-        if component_fallback == "N/A" and pod_name:
-            parts = pod_name.split("-")
-            if len(parts) >= 2:
-                potential_component = parts[0]
-                if potential_component and len(potential_component) > 1:
-                    component_fallback = potential_component
-
-        return (component_fallback, "N/A")
+        return _component_fallback_from_names(pod_name, namespace)
     except Exception as e:
         if globals().get("args") and globals()["args"].debug:
             print(
@@ -3536,7 +3703,9 @@ def collect_individual_pod_executions(
             {requests: {memory, cpu}, limits: {memory, cpu}}
                           from extract_task_info(); used to add mem_requests_k8s, etc. to each
                           execution.
-        pll_queries: Number of Prometheus queries to run in parallel per pod (1-4).
+        pll_queries: Parallelism for the 4 metric queries within each pod batch (1-4).
+        pll_pods: Parallelism for pod-batch jobs per cluster (each job is up to
+            POD_BATCH_SIZE pods for one step/namespace).
 
     Returns:
         Tuple (list of execution dicts, collection_stats dict)
@@ -3560,8 +3729,6 @@ def collect_individual_pod_executions(
     lookback_seconds = int(lookback_seconds)
     range_str = format_promql_duration(lookback_seconds)
     lookback_label = format_lookback_label(days, hours)
-    # get_component_for_pod.py still expects integer days
-    component_days = max(1, (lookback_seconds + 86399) // 86400)
 
     all_executions = []
     collection_stats = {
@@ -3572,6 +3739,10 @@ def collect_individual_pod_executions(
         "lookback_label": lookback_label,
     }
     samples_lock = Lock()
+    # Cap concurrent Prom HTTP across cluster workers to avoid stampedes.
+    _pll_q_cap = max(1, min(4, pll_queries or 2))
+    _cluster_cap = max(1, parallel_clusters or 1)
+    prom_sem = Semaphore(max(8, _cluster_cap * _pll_q_cap * 2))
 
     def add_debug_sample(reason, cluster_name, pod_name="", namespace="", step="", detail=""):
         if not debug:
@@ -3698,13 +3869,17 @@ def collect_individual_pod_executions(
                     return [], cluster_stats
 
                 end_time = int(time.time())
-                start_time = end_time - lookback_seconds
 
                 cluster_executions = []
 
                 # List pods once per cluster/task (not once per step).
                 # Create a session per cluster for TLS connection reuse.
                 prom_session = requests.Session()
+
+                # (pod, namespace) -> first_ts from kube_pod_labels listing
+                pod_first_ts = {}
+                # (pod, namespace) -> (component, application)
+                component_cache = {}
 
                 try:
                     pods_raw = _list_task_pods(
@@ -3714,13 +3889,16 @@ def collect_individual_pod_executions(
                         task_name,
                         end_time,
                         lookback_seconds,
+                        sem=prom_sem,
                     )
+                    cluster_stats["http_queries"] += 1
                     pods = []
                     seen = set()
                     if "data" in pods_raw and "result" in pods_raw["data"]:
                         for entry in pods_raw["data"]["result"]:
-                            pod_name = entry.get("metric", {}).get("pod", "")
-                            namespace = entry.get("metric", {}).get("namespace", "")
+                            metric = entry.get("metric", {}) or {}
+                            pod_name = metric.get("pod", "")
+                            namespace = metric.get("namespace", "")
                             if not pod_name:
                                 continue
                             key = (pod_name, namespace)
@@ -3728,6 +3906,12 @@ def collect_individual_pod_executions(
                                 continue
                             seen.add(key)
                             pods.append(key)
+                            _peak, first_ts = _series_peak_and_first_ts(entry)
+                            if first_ts is not None:
+                                pod_first_ts[key] = first_ts
+                            comp = _first_label_present(metric, _COMPONENT_LABEL_KEYS)
+                            app = _first_label_present(metric, _APPLICATION_LABEL_KEYS)
+                            component_cache[key] = (comp, app)
                 except Exception as e:
                     cluster_stats["list_failures"] += 1
                     add_debug_sample(
@@ -3749,44 +3933,69 @@ def collect_individual_pod_executions(
                 if not pods:
                     return [], cluster_stats
 
+                # Batch-fill component/application for pods missing labels on the list query.
+                cluster_stats["http_queries"] += _fill_component_cache_for_pods(
+                    prom_session,
+                    prom_host,
+                    token,
+                    pods,
+                    end_time,
+                    component_cache,
+                    sem=prom_sem,
+                )
+
                 # Register with the spinner so it can show live pod-level progress.
-                # stats_ref is a shared reference — spinner reads pods_queried directly.
                 with progress_lock:
                     progress_data["active_clusters"][cluster_name] = {
                         "stats_ref": cluster_stats,
                         "total": len(pods) * len(steps),
                     }
 
-                pod_lock = Lock()
+                stats_lock = Lock()
+                query_pool_size = max(1, min(4, pll_queries))
+                # Shared pool for the 4 metric queries inside each batch job.
+                query_executor = ThreadPoolExecutor(max_workers=query_pool_size)
 
-                def _run_metric_query(metric_query_pair):
-                    """Run one PromQL query in-process; retry transient failures."""
+                def _run_instant_metric(metric_query_pair):
+                    """Run one instant PromQL query; retry transient failures."""
                     metric_name, query = metric_query_pair
                     last_exc = None
                     for attempt in range(3):
                         try:
-                            return metric_name, _query_prometheus_range(
+                            result = _query_prometheus_instant(
                                 prom_session,
                                 prom_host,
                                 token,
                                 query,
-                                start_time,
-                                end_time,
+                                eval_time=end_time,
+                                sem=prom_sem,
                             )
+                            with stats_lock:
+                                cluster_stats["http_queries"] += 1
+                            return metric_name, result
                         except Exception as exc:
                             last_exc = exc
                             if attempt < 2:
                                 time.sleep(0.4 * (attempt + 1))
                     return metric_name, last_exc
 
-                def _process_pod_step(item):
-                    """Process one (pod_name, namespace, step, step_name) work item."""
-                    pod_name, namespace, step, step_name = item
-                    with pod_lock:
-                        cluster_stats["pods_queried"] += 1
+                def _process_pod_batch(item):
+                    """Process one (step, step_name, namespace, pod_batch) work item."""
+                    step, step_name, namespace, pod_batch = item
+                    records = []
+                    with stats_lock:
+                        cluster_stats["pods_queried"] += len(pod_batch)
 
-                    ns_filter = 'namespace=~".*-tenant"'
-                    labels = f'container="{step_name}",pod="{pod_name}",{ns_filter}'
+                    regex = _pod_regex_for_batch(pod_batch)
+                    if not regex:
+                        return records
+
+                    ns_clause = (
+                        f'namespace="{namespace}"'
+                        if namespace and namespace != "N/A"
+                        else 'namespace=~".*-tenant"'
+                    )
+                    labels = f'container="{step_name}",pod=~"({regex})",{ns_clause}'
                     mem_query = (
                         f"max_over_time("
                         f"container_memory_working_set_bytes"
@@ -3810,27 +4019,35 @@ def collect_individual_pod_executions(
                         f"{{{labels}}}[5m])"
                         f"[{range_str}:5m])"
                     )
-
                     query_pairs = [
                         ("mem", mem_query),
                         ("cpu", cpu_query),
                         ("io_read", io_read_query),
                         ("io_write", io_write_query),
                     ]
-                    _pll = max(1, min(4, pll_queries))
-                    with ThreadPoolExecutor(max_workers=_pll) as qex:
-                        query_results = dict(qex.map(_run_metric_query, query_pairs))
+                    try:
+                        query_results = dict(query_executor.map(_run_instant_metric, query_pairs))
+                    except Exception as exc:
+                        with stats_lock:
+                            cluster_stats["query_failures"] += len(pod_batch)
+                        add_debug_sample(
+                            "query_failure",
+                            cluster_name,
+                            namespace=namespace,
+                            step=step_name,
+                            detail=str(exc),
+                        )
+                        return records
 
                     mem_result = query_results.get("mem")
                     cpu_result = query_results.get("cpu")
                     io_read_result = query_results.get("io_read")
                     io_write_result = query_results.get("io_write")
 
-                    # Memory is required; CPU/IO failures are non-fatal.
                     mem_ok = not isinstance(mem_result, Exception) and mem_result is not None
                     if not mem_ok:
-                        with pod_lock:
-                            cluster_stats["query_failures"] += 1
+                        with stats_lock:
+                            cluster_stats["query_failures"] += len(pod_batch)
                         err_detail = (
                             f"{type(mem_result).__name__}: {mem_result}"
                             if isinstance(mem_result, Exception)
@@ -3839,128 +4056,31 @@ def collect_individual_pod_executions(
                         add_debug_sample(
                             "query_failure",
                             cluster_name,
-                            pod_name=pod_name,
                             namespace=namespace,
                             step=step_name,
                             detail=err_detail,
                         )
-                        return None
+                        return records
 
                     try:
-                        mem_data = mem_result
-                        cpu_data = (
+                        mem_by_pod = _peaks_by_pod(mem_result)
+                        cpu_by_pod = _peaks_by_pod(
                             cpu_result
                             if not isinstance(cpu_result, Exception) and cpu_result is not None
-                            else {"data": {"result": []}}
+                            else {}
                         )
-                        io_read_data = (
+                        io_read_by_pod = _peaks_by_pod(
                             io_read_result
                             if not isinstance(io_read_result, Exception)
                             and io_read_result is not None
                             else {}
                         )
-                        io_write_data = (
+                        io_write_by_pod = _peaks_by_pod(
                             io_write_result
                             if not isinstance(io_write_result, Exception)
                             and io_write_result is not None
                             else {}
                         )
-
-                        mem_max = 0
-                        cpu_max = 0
-                        io_read_max_bytes_s = 0
-                        io_write_max_bytes_s = 0
-                        first_timestamp = None
-
-                        mem_series = mem_data.get("data", {}).get("result", [])
-                        cpu_series = cpu_data.get("data", {}).get("result", [])
-                        io_read_series = io_read_data.get("data", {}).get("result", [])
-                        io_write_series = io_write_data.get("data", {}).get("result", [])
-
-                        matched_mem_series = False
-                        if mem_series:
-                            for series in mem_series:
-                                metric = series.get("metric", {})
-                                if metric.get("pod") == pod_name:
-                                    matched_mem_series = True
-                                    values = series.get("values", [])
-                                    if values:
-                                        if first_timestamp is None:
-                                            first_timestamp = float(values[0][0])
-                                        for _ts, val in values:
-                                            mem_bytes = float(val) if val else 0
-                                            if mem_bytes > mem_max:
-                                                mem_max = mem_bytes
-
-                        if cpu_series:
-                            for series in cpu_series:
-                                metric = series.get("metric", {})
-                                if metric.get("pod") == pod_name:
-                                    values = series.get("values", [])
-                                    for _ts, val in values:
-                                        cpu_val = float(val) if val else 0
-                                        if cpu_val > cpu_max:
-                                            cpu_max = cpu_val
-
-                        for series in io_read_series:
-                            if series.get("metric", {}).get("pod") == pod_name:
-                                for _ts, val in series.get("values", []):
-                                    v = float(val) if val else 0
-                                    if v > io_read_max_bytes_s:
-                                        io_read_max_bytes_s = v
-
-                        for series in io_write_series:
-                            if series.get("metric", {}).get("pod") == pod_name:
-                                for _ts, val in series.get("values", []):
-                                    v = float(val) if val else 0
-                                    if v > io_write_max_bytes_s:
-                                        io_write_max_bytes_s = v
-
-                        if mem_max == 0 and first_timestamp is None:
-                            with pod_lock:
-                                cluster_stats["empty_metrics"] += 1
-                            if mem_series and not matched_mem_series:
-                                reason = "pod_label_mismatch"
-                                detail = (
-                                    f"mem_series={len(mem_series)} but none matched "
-                                    f"pod={pod_name} container={step_name}"
-                                )
-                            elif mem_series and matched_mem_series:
-                                reason = "empty_values"
-                                detail = f"matched series had no values container={step_name}"
-                            else:
-                                reason = "empty_metrics"
-                                detail = f"no container_memory series for container={step_name}"
-                            add_debug_sample(
-                                reason,
-                                cluster_name,
-                                pod_name=pod_name,
-                                namespace=namespace,
-                                step=step_name,
-                                detail=detail,
-                            )
-                            return None
-
-                        component, application = extract_component_from_pod(
-                            pod_name,
-                            namespace,
-                            token,
-                            prom_host,
-                            end_time,
-                            component_days,
-                            session=prom_session,
-                        )
-
-                        mem_mb = mem_max / (1024 * 1024)
-                        io_read_mbps = round(io_read_max_bytes_s / (1024 * 1024), 3)
-                        io_write_mbps = round(io_write_max_bytes_s / (1024 * 1024), 3)
-
-                        if first_timestamp:
-                            exec_timestamp = datetime.fromtimestamp(first_timestamp).strftime(
-                                "%Y-%m-%d %H:%M:%S"
-                            )
-                        else:
-                            exec_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
                         res = (current_resources or {}).get(step, {}) or {}
                         req = res.get("requests") or {}
@@ -3970,63 +4090,122 @@ def collect_individual_pod_executions(
                         mem_lim_k8s = lim.get("memory") if lim.get("memory") else "N/A"
                         cpu_lim_k8s = lim.get("cpu") if lim.get("cpu") else "N/A"
 
-                        with pod_lock:
-                            cluster_stats["pods_kept"] += 1
+                        for pod_name in pod_batch:
+                            key = (pod_name, namespace)
+                            if pod_name not in mem_by_pod:
+                                with stats_lock:
+                                    cluster_stats["empty_metrics"] += 1
+                                add_debug_sample(
+                                    "empty_metrics",
+                                    cluster_name,
+                                    pod_name=pod_name,
+                                    namespace=namespace,
+                                    step=step_name,
+                                    detail=f"no container_memory series for container={step_name}",
+                                )
+                                continue
 
-                        return {
-                            "task": task_name,
-                            "step": step,
-                            "component": component,
-                            "application": application,
-                            "cluster": cluster_name,
-                            "pod": pod_name,
-                            "namespace": namespace,
-                            "timestamp": exec_timestamp,
-                            "memory_mb": round(mem_mb, 2),
-                            "cpu_cores": round(cpu_max, 4),
-                            "io_read_mbps": io_read_mbps,
-                            "io_write_mbps": io_write_mbps,
-                            "mem_requests_k8s": mem_req_k8s,
-                            "cpu_requests_k8s": cpu_req_k8s,
-                            "mem_limits_k8s": mem_lim_k8s,
-                            "cpu_limits_k8s": cpu_lim_k8s,
-                        }
+                            mem_max, mem_ts = mem_by_pod[pod_name]
+                            first_timestamp = pod_first_ts.get(key)
+                            if first_timestamp is None:
+                                first_timestamp = mem_ts
+                            if mem_max == 0 and first_timestamp is None:
+                                with stats_lock:
+                                    cluster_stats["empty_metrics"] += 1
+                                add_debug_sample(
+                                    "empty_values",
+                                    cluster_name,
+                                    pod_name=pod_name,
+                                    namespace=namespace,
+                                    step=step_name,
+                                    detail=f"matched series had no values container={step_name}",
+                                )
+                                continue
 
+                            cpu_max = cpu_by_pod.get(pod_name, (0.0, None))[0]
+                            io_read_max_bytes_s = io_read_by_pod.get(pod_name, (0.0, None))[0]
+                            io_write_max_bytes_s = io_write_by_pod.get(pod_name, (0.0, None))[0]
+
+                            component, application = component_cache.get(key, ("N/A", "N/A"))
+                            if not component or component == "N/A":
+                                component, application = _component_fallback_from_names(
+                                    pod_name, namespace
+                                )
+
+                            mem_mb = mem_max / (1024 * 1024)
+                            io_read_mbps = round(io_read_max_bytes_s / (1024 * 1024), 3)
+                            io_write_mbps = round(io_write_max_bytes_s / (1024 * 1024), 3)
+
+                            if first_timestamp:
+                                exec_timestamp = datetime.fromtimestamp(first_timestamp).strftime(
+                                    "%Y-%m-%d %H:%M:%S"
+                                )
+                            else:
+                                exec_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                            with stats_lock:
+                                cluster_stats["pods_kept"] += 1
+
+                            records.append(
+                                {
+                                    "task": task_name,
+                                    "step": step,
+                                    "component": component,
+                                    "application": application,
+                                    "cluster": cluster_name,
+                                    "pod": pod_name,
+                                    "namespace": namespace,
+                                    "timestamp": exec_timestamp,
+                                    "memory_mb": round(mem_mb, 2),
+                                    "cpu_cores": round(cpu_max, 4),
+                                    "io_read_mbps": io_read_mbps,
+                                    "io_write_mbps": io_write_mbps,
+                                    "mem_requests_k8s": mem_req_k8s,
+                                    "cpu_requests_k8s": cpu_req_k8s,
+                                    "mem_limits_k8s": mem_lim_k8s,
+                                    "cpu_limits_k8s": cpu_lim_k8s,
+                                }
+                            )
                     except (KeyError, ValueError) as e:
-                        with pod_lock:
-                            cluster_stats["parse_errors"] += 1
+                        with stats_lock:
+                            cluster_stats["parse_errors"] += len(pod_batch)
                         add_debug_sample(
                             "parse_error",
                             cluster_name,
-                            pod_name=pod_name,
                             namespace=namespace,
                             step=step_name,
                             detail=str(e),
                         )
                         if debug:
                             print(
-                                f"DEBUG: Error processing pod {pod_name}: {e}",
+                                f"DEBUG: Error processing batch ns={namespace} "
+                                f"step={step_name}: {e}",
                                 file=sys.stderr,
                             )
-                        return None
+                    return records
 
-                # Build (pod_name, namespace, step, step_name) work items for all pod×step combos.
-                work_items = [
-                    (
-                        pod_name,
-                        namespace,
-                        step,
-                        f"step-{step}" if not step.startswith("step-") else step,
-                    )
-                    for step in steps
-                    for pod_name, namespace in pods
-                ]
+                # Build batch jobs: (step, step_name, namespace, [pods...]) — transport batches only.
+                pods_by_ns = defaultdict(list)
+                for pod_name, namespace in pods:
+                    pods_by_ns[namespace].append(pod_name)
+
+                batch_jobs = []
+                for step in steps:
+                    step_name = f"step-{step}" if not step.startswith("step-") else step
+                    for namespace, ns_pods in pods_by_ns.items():
+                        for i in range(0, len(ns_pods), POD_BATCH_SIZE):
+                            batch_jobs.append(
+                                (step, step_name, namespace, ns_pods[i : i + POD_BATCH_SIZE])
+                            )
 
                 _pll_pods_eff = max(1, pll_pods)
-                with ThreadPoolExecutor(max_workers=_pll_pods_eff) as pod_exe:
-                    for exec_record in pod_exe.map(_process_pod_step, work_items):
-                        if exec_record:
-                            cluster_executions.append(exec_record)
+                try:
+                    with ThreadPoolExecutor(max_workers=_pll_pods_eff) as batch_exe:
+                        for batch_records in batch_exe.map(_process_pod_batch, batch_jobs):
+                            if batch_records:
+                                cluster_executions.extend(batch_records)
+                finally:
+                    query_executor.shutdown(wait=True)
 
                 return cluster_executions, cluster_stats
 
@@ -4123,6 +4302,7 @@ def collect_individual_pod_executions(
             f"listed={collection_stats['pods_listed']} "
             f"queried={collection_stats['pods_queried']} "
             f"kept={collection_stats['pods_kept']} "
+            f"http_queries={collection_stats.get('http_queries', 0)} "
             f"query_failures={collection_stats['query_failures']} "
             f"empty_metrics={collection_stats['empty_metrics']} "
             f"parse_errors={collection_stats['parse_errors']} "
@@ -4135,7 +4315,8 @@ def collect_individual_pod_executions(
                 cs = collection_stats["per_cluster"][cl]
                 print(
                     f"  {cl}: listed={cs['pods_listed']} queried={cs['pods_queried']} "
-                    f"kept={cs['pods_kept']} query_failures={cs['query_failures']} "
+                    f"kept={cs['pods_kept']} http_queries={cs.get('http_queries', 0)} "
+                    f"query_failures={cs['query_failures']} "
                     f"empty_metrics={cs['empty_metrics']}",
                     file=sys.stderr,
                 )
@@ -5051,8 +5232,8 @@ Examples:
         type=int,
         metavar="N",
         default=2,
-        help="Number of Prometheus queries to run in parallel per pod (mem/cpu/io_read/io_write). "
-        "Default: 2. Max effective value: 4 (one per metric). "
+        help="Number of Prometheus queries to run in parallel per pod-batch "
+        "(mem/cpu/io_read/io_write). Default: 2. Max effective value: 4 (one per metric). "
         "Higher values reduce wall-clock time at the cost of more concurrent HTTP requests.",
     )
     parser.add_argument(
@@ -5060,7 +5241,8 @@ Examples:
         type=int,
         metavar="N",
         default=8,
-        help="Number of pods to process in parallel per cluster worker. "
+        help="Number of pod-batch jobs to process in parallel per cluster worker "
+        f"(each batch is up to {POD_BATCH_SIZE} pods for one step/namespace). "
         "Default: 8. Higher values reduce wall-clock time on large clusters.",
     )
 

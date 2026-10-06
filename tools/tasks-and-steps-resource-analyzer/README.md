@@ -83,7 +83,7 @@ base metric to use, then update your task YAML accordingly.
 
 | Goal | Recommended flags |
 |---|---|
-| Fastest run | `--pll-clusters 4 --pll-queries 4` (clusters + queries in parallel) |
+| Fastest run | `--pll-clusters 4 --pll-queries 4 --pll-pods 8` (clusters + batched queries) |
 | Wider history | `--days 15` (15 days instead of default 7) |
 | Force fresh data | `--analyze-again` (ignores existing cache) |
 | Skip data collection | `--update` (reuse existing Phase 1 cache) |
@@ -101,9 +101,17 @@ base metric to use, then update your task YAML accordingly.
 - Default (no `--pll-clusters`): clusters processed one at a time — safe but slow
 - `--pll-clusters 4`: 4 clusters processed concurrently — ~4× faster, recommended
 - More than 6 workers may hit Prometheus rate limits; 4 is a good default
-- `--pll-queries N` (default 2, max 4): within each cluster worker, all 4 per-pod
-  Prometheus queries (mem / cpu / io_read / io_write) are dispatched to a small thread
-  pool of size N. `--pll-queries 4` issues all 4 queries simultaneously per pod.
+- **Pod batching (primary path):** metrics are collected in ≤50-pod batches per
+  step/namespace via instant `/api/v1/query` + `max_over_time(...)`, not one
+  `query_range` per pod. This cuts Prometheus HTTP volume sharply on busy tasks
+  while preserving the same per-pod peak → P95/P90/median aggregation.
+- `--pll-queries N` (default 2, max 4): within each batch job, the 4 metric
+  queries (mem / cpu / io_read / io_write) share a pool of size N.
+- `--pll-pods N` (default 8): number of batch jobs in flight per cluster worker.
+
+> **Follow-up (PR B):** a modular split of `analyze_resource_limits.py` into
+> `prom/` / `analyze/` / `report/` / `cli` packages is planned separately so this
+> efficiency change stays reviewable on its own.
 
 ---
 
@@ -225,17 +233,21 @@ overwriting earlier runs.
 analyze_resource_limits.py  (orchestrator)
   │
   ├── per-cluster worker (threaded, --pll-clusters N)
-  │     ├── list_pods_for_a_particular_task.py   → Prometheus kube_pod_labels query
-  │     └── query_prometheus_range.py            → per-pod memory / CPU / I/O range queries
-  │           dispatched via inner ThreadPoolExecutor (--pll-queries N, default 2, max 4)
-  │           adaptive step: 30s (≤1d) · 5m (≤7d) · 15m (≤30d) · 1h (>30d)
+  │     ├── kube_pod_labels list (in-process) + component label cache
+  │     └── batched instant /api/v1/query per step×namespace
+  │           pod batches ≤50; 4 metrics via --pll-queries N
+  │           batch jobs in parallel via --pll-pods N
+  │           peaks = max_over_time(...[lookback]); timestamps from list series
   │
   └── wrapper_for_promql_for_all_clusters.sh  (legacy aggregation path, batched per-cluster)
         └── wrapper_for_promql.sh  (per-cluster: 50-pod batches, max/p95/p90/median)
 ```
 
-The primary path for `--file` usage is the Python threaded worker (direct per-pod queries).
-The shell wrapper path is the legacy stdin/pipe path.
+The primary path for `--file` usage is the Python threaded worker (batched instant
+queries). The shell wrapper path is the legacy stdin/pipe path.
+
+A follow-up refactor (separate PR/branch) will split this orchestrator into
+smaller modules without changing collection semantics.
 
 ---
 
