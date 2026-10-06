@@ -654,146 +654,165 @@ def validate_wrapper_steps(wrapper_task, wrapper_steps, yaml_task, yaml_steps):
     return is_valid, errors
 
 
+_SA_CONTEXT_MARKER = "system:serviceaccount"
+_KONFLUX_USER_CONTEXT_RE = re.compile(r"/api-(?:kflux|stone)-", re.IGNORECASE)
+_OPENSHIFTAPPS_CLUSTER_RE = re.compile(
+    r"/api-(.+?)-[a-z0-9]{4}-p[0-9]-openshiftapps",
+    re.IGNORECASE,
+)
+_CONNECTIVITY_TIMEOUT_SEC = 15
+
+
+def is_konflux_user_context(ctx):
+    """Return True for a human oc/oclogin Konflux context, not SA or unrelated clusters."""
+    if not ctx or _SA_CONTEXT_MARKER in ctx:
+        return False
+    return bool(_KONFLUX_USER_CONTEXT_RE.search(ctx))
+
+
+def list_kubectl_context_names():
+    result = subprocess.run(
+        ["kubectl", "config", "get-contexts", "-o", "name"],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    if result.returncode != 0:
+        return []
+    return [c.strip() for c in result.stdout.splitlines() if c.strip()]
+
+
+def _wrapper_contexts_assignment(wrapper_path):
+    with open(wrapper_path) as f:
+        for line in f:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            if stripped.startswith("CONTEXTS="):
+                match = re.search(r'CONTEXTS="([^"]*)"', line)
+                if match:
+                    return match.group(1).strip()
+    return None
+
+
+def resolve_wrapper_contexts(wrapper_path):
+    """Resolve kubeconfig context names from the wrapper CONTEXTS= line.
+
+    Returns:
+        tuple: (contexts, error_message). error_message is None on success.
+    """
+    try:
+        contexts_str = _wrapper_contexts_assignment(wrapper_path)
+    except OSError as e:
+        return None, f"Error reading wrapper script: {e}"
+
+    if not contexts_str:
+        contexts = list_kubectl_context_names()
+        if not contexts:
+            return None, "Could not get cluster contexts"
+        return contexts, None
+
+    if "$(" not in contexts_str:
+        return [c.strip() for c in contexts_str.split() if c.strip()], None
+
+    cmd_match = re.search(r"\$\(([^)]+)\)", contexts_str)
+    if not cmd_match:
+        return None, "Invalid CONTEXTS command substitution"
+    cmd = cmd_match.group(1).strip()
+    if "kubectl config get-contexts" not in cmd:
+        return None, f"Unsupported CONTEXTS command: {cmd}"
+
+    contexts = list_kubectl_context_names()
+    if contexts:
+        return contexts, None
+    fallback_match = re.search(r'echo\s+[\'"]([^\'"]+)[\'"]', contexts_str)
+    if fallback_match:
+        return [fallback_match.group(1).strip()], None
+    return None, "Could not execute CONTEXTS command"
+
+
+def select_analyzer_contexts(contexts, announce_ignored=False):
+    """Keep one Konflux user context per cluster; drop SA leftovers and other clusters."""
+    konflux = []
+    ignored = []
+    for ctx in contexts:
+        if not ctx:
+            continue
+        if is_konflux_user_context(ctx):
+            konflux.append(ctx)
+        else:
+            ignored.append(ctx)
+
+    selected_by_name = {}
+    for ctx in konflux:
+        name = get_cluster_display_name(ctx)
+        prev = selected_by_name.get(name)
+        if prev is None or (ctx.startswith("default/") and not prev.startswith("default/")):
+            selected_by_name[name] = ctx
+
+    order = {ctx: i for i, ctx in enumerate(konflux)}
+    selected = sorted(selected_by_name.values(), key=lambda c: order.get(c, 10**9))
+
+    if announce_ignored and ignored:
+        print(
+            f"Ignoring {len(ignored)} kubeconfig context(s) that are not Konflux user logins.",
+            file=sys.stderr,
+        )
+    return selected
+
+
 def check_cluster_connectivity(wrapper_path):
-    """Check connectivity to all clusters defined in wrapper script.
+    """Check connectivity to Konflux clusters from the wrapper / kubeconfig.
+
+    Probes with ``kubectl --context`` so the current kubeconfig context is left unchanged.
+    Service-account leftovers, Lightwell (unless named like api-kflux/api-stone), and
+    unrelated clusters such as dno-ocp-hub are skipped.
 
     Returns:
         tuple: (all_connected, connectivity_report)
-        - all_connected: True if all clusters are accessible
+        - all_connected: True if all selected clusters are accessible
         - connectivity_report: List of (cluster_display_name, status, error_message) tuples
-                              Note: cluster_display_name is the short name for display purposes
     """
     report = []
     all_connected = True
 
-    try:
-        with open(wrapper_path) as f:
-            lines = f.readlines()
+    contexts, error = resolve_wrapper_contexts(wrapper_path)
+    if error:
+        return False, [("unknown", False, error)]
 
-        # Extract CONTEXTS line (only non-commented lines, similar to read_wrapper_config)
-        contexts_str = None
-        for line in lines:
-            stripped = line.strip()
-            # Skip comments and empty lines
-            if not stripped or stripped.startswith("#"):
-                continue
-            # Check for CONTEXTS (not commented)
-            if stripped.startswith("CONTEXTS="):
-                # Extract value between quotes
-                match = re.search(r'CONTEXTS="([^"]*)"', line)
-                if match:
-                    contexts_str = match.group(1).strip()
-                    break
+    contexts = select_analyzer_contexts(contexts, announce_ignored=True)
+    if not contexts:
+        return False, [("unknown", False, "No Konflux user kubeconfig contexts found")]
 
-        if not contexts_str:
-            # No CONTEXTS found in non-commented lines, try to get contexts from kubectl as fallback
-            result = subprocess.run(
-                ["kubectl", "config", "get-contexts", "-o", "name"],
+    timeout_flag = f"{_CONNECTIVITY_TIMEOUT_SEC}s"
+    for ctx in contexts:
+        display_name = get_cluster_display_name(ctx)
+        try:
+            test_result = subprocess.run(
+                [
+                    "kubectl",
+                    "get",
+                    "namespaces",
+                    "--context",
+                    ctx,
+                    f"--request-timeout={timeout_flag}",
+                ],
                 capture_output=True,
                 text=True,
-                timeout=120,  # 2 minutes timeout for connectivity check
+                timeout=_CONNECTIVITY_TIMEOUT_SEC + 5,
             )
-            if result.returncode == 0:
-                contexts = [c.strip() for c in result.stdout.strip().split("\n") if c.strip()]
+            if test_result.returncode == 0:
+                report.append((display_name, True, "Connected"))
             else:
-                return False, [("unknown", False, "Could not get cluster contexts")]
-        else:
-            # Handle cases where CONTEXTS uses command substitution
-            if "$(" in contexts_str:
-                # Execute command substitution to get contexts
-                # Extract the command inside $()
-                cmd_match = re.search(r"\$\(([^)]+)\)", contexts_str)
-                if cmd_match:
-                    cmd = cmd_match.group(1).strip()
-                    # Handle the specific case: kubectl config get-contexts -o name 2>/dev/null |
-                    # xargs
-                    if "kubectl config get-contexts" in cmd:
-                        result = subprocess.run(
-                            ["kubectl", "config", "get-contexts", "-o", "name"],
-                            capture_output=True,
-                            text=True,
-                            timeout=120,  # 2 minutes timeout for connectivity check
-                        )
-                        if result.returncode == 0:
-                            contexts = [
-                                c.strip() for c in result.stdout.strip().split("\n") if c.strip()
-                            ]
-                        else:
-                            # Fallback to default if command fails (extract from echo)
-                            fallback_match = re.search(r'echo\s+[\'"]([^\'"]+)[\'"]', contexts_str)
-                            if fallback_match:
-                                contexts = [fallback_match.group(1).strip()]
-                            else:
-                                return False, [
-                                    (
-                                        "unknown",
-                                        False,
-                                        "Could not execute CONTEXTS command",
-                                    )
-                                ]
-                    else:
-                        return False, [("unknown", False, f"Unsupported CONTEXTS command: {cmd}")]
-                else:
-                    return False, [("unknown", False, "Invalid CONTEXTS command substitution")]
-            else:
-                # Simple string value - split by space
-                contexts = [c.strip() for c in contexts_str.split() if c.strip()]
-
-        # Test connectivity to each cluster
-        for ctx in contexts:
-            if not ctx:
-                continue
-            try:
-                result = subprocess.run(
-                    ["kubectl", "config", "use-context", ctx],
-                    capture_output=True,
-                    text=True,
-                    timeout=120,  # 2 minutes timeout for connectivity check
-                )
-                if result.returncode == 0:
-                    # Try a simple kubectl command to verify connectivity
-                    test_result = subprocess.run(
-                        ["kubectl", "get", "namespaces", "--request-timeout=2m"],
-                        capture_output=True,
-                        text=True,
-                        timeout=120,  # 2 minutes timeout for connectivity check
-                    )
-                    if test_result.returncode == 0:
-                        # Use display name for report, but ctx (full context) is still used for
-                        # operations
-                        display_name = get_cluster_display_name(ctx)
-                        report.append((display_name, True, "Connected"))
-                    else:
-                        display_name = get_cluster_display_name(ctx)
-                        report.append(
-                            (
-                                display_name,
-                                False,
-                                f"Cannot access cluster: {test_result.stderr[:100]}",
-                            )
-                        )
-                        all_connected = False
-                else:
-                    display_name = get_cluster_display_name(ctx)
-                    report.append(
-                        (
-                            display_name,
-                            False,
-                            f"Cannot switch context: {result.stderr[:100]}",
-                        )
-                    )
-                    all_connected = False
-            except subprocess.TimeoutExpired:
-                display_name = get_cluster_display_name(ctx)
-                report.append((display_name, False, "Connection timeout"))
+                err = (test_result.stderr or test_result.stdout or "unknown error").strip()
+                report.append((display_name, False, f"Cannot access cluster: {err[:100]}"))
                 all_connected = False
-            except Exception as e:
-                display_name = get_cluster_display_name(ctx)
-                report.append((display_name, False, f"Error: {str(e)[:100]}"))
-                all_connected = False
-
-    except Exception as e:
-        return False, [("unknown", False, f"Error reading wrapper script: {str(e)}")]
+        except subprocess.TimeoutExpired:
+            report.append((display_name, False, "Connection timeout"))
+            all_connected = False
+        except Exception as e:
+            report.append((display_name, False, f"Error: {str(e)[:100]}"))
+            all_connected = False
 
     return all_connected, report
 
@@ -836,121 +855,47 @@ def prompt_confirmation(task_name, steps, source="extracted from YAML"):
 
 
 def extract_cluster_list(wrapper_path):
-    """Extract list of clusters from wrapper script.
+    """Extract Konflux user cluster contexts from the wrapper / kubeconfig.
 
     Returns:
         list: List of cluster context names
     """
-    try:
-        with open(wrapper_path) as f:
-            lines = f.readlines()
-
-        # Extract CONTEXTS line (only non-commented lines, same logic as check_cluster_connectivity)
-        contexts_str = None
-        for line in lines:
-            stripped = line.strip()
-            # Skip comments and empty lines
-            if not stripped or stripped.startswith("#"):
-                continue
-            # Check for CONTEXTS (not commented)
-            if stripped.startswith("CONTEXTS="):
-                # Extract value between quotes
-                match = re.search(r'CONTEXTS="([^"]*)"', line)
-                if match:
-                    contexts_str = match.group(1).strip()
-                    break
-
-        if not contexts_str:
-            # Try to get contexts from kubectl
-            result = subprocess.run(
-                ["kubectl", "config", "get-contexts", "-o", "name"],
-                capture_output=True,
-                text=True,
-                timeout=120,  # 2 minutes timeout for connectivity check
-            )
-            if result.returncode == 0:
-                contexts = [c.strip() for c in result.stdout.strip().split("\n") if c.strip()]
-            else:
-                return []
-        else:
-            # Handle cases where CONTEXTS uses command substitution
-            if "$(" in contexts_str:
-                # Execute command substitution
-                cmd_match = re.search(r"\$\(([^)]+)\)", contexts_str)
-                if cmd_match:
-                    cmd = cmd_match.group(1).strip()
-                    if "kubectl config get-contexts" in cmd:
-                        result = subprocess.run(
-                            ["kubectl", "config", "get-contexts", "-o", "name"],
-                            capture_output=True,
-                            text=True,
-                            timeout=120,  # 2 minutes timeout for connectivity check
-                        )
-                        if result.returncode == 0:
-                            contexts = [
-                                c.strip() for c in result.stdout.strip().split("\n") if c.strip()
-                            ]
-                        else:
-                            # Fallback to default if command fails
-                            fallback_match = re.search(r'echo\s+[\'"]([^\'"]+)[\'"]', contexts_str)
-                            if fallback_match:
-                                contexts = [fallback_match.group(1).strip()]
-                            else:
-                                return []
-                    else:
-                        return []
-                else:
-                    return []
-            else:
-                # Simple string value - split by space
-                contexts = [c.strip() for c in contexts_str.split() if c.strip()]
-
-        # Remove duplicates while preserving order
-        # CRITICAL: Use dict.fromkeys() for guaranteed deduplication
-        # This is more efficient and ensures no duplicates slip through
-        unique_contexts = list(
-            dict.fromkeys(ctx.strip() for ctx in contexts if ctx and ctx.strip())
-        )
-
-        return unique_contexts
-    except Exception as e:
-        print(f"Warning: Could not extract cluster list: {e}", file=sys.stderr)
+    contexts, error = resolve_wrapper_contexts(wrapper_path)
+    if error:
+        print(f"Warning: Could not extract cluster list: {error}", file=sys.stderr)
         return []
+    return select_analyzer_contexts(contexts)
 
 
 def get_cluster_display_name(cluster_ctx):
     """Extract short cluster display name from full context string.
 
-    This function extracts a user-friendly short name for display purposes only.
-    The full context string should still be used for all cluster operations.
+    Display-only. Operations still use the full context string.
 
-    Example:
-        Input:  'default/api-stone-prd-rh01-pg1f-p1-openshiftapps-com:6443/smodak'
-        Output: 'stone-prd-rh01'
-
-    Uses same regex logic as wrapper_for_promql.sh: s#.*/api-([^-]+-[^-]+-[^-]+).*#\1#
+    Examples:
+        'default/api-stone-prd-rh01-pg1f-p1-openshiftapps-com:6443/smodak'
+            -> 'stone-prd-rh01'
+        'default/api-kflux-c-prd-e01-yo5u-p3-openshiftapps-com:443/smodak'
+            -> 'kflux-c-prd-e01'
 
     Args:
-        cluster_ctx: Full cluster context string (e.g., 'default/api-stone-prd-rh01-...')
+        cluster_ctx: Full cluster context string
 
     Returns:
-        str: Short cluster display name (e.g., 'stone-prd-rh01')
+        str: Short cluster display name
     """
-    # Use same regex as wrapper_for_promql.sh: s#.*/api-([^-]+-[^-]+-[^-]+).*#\1#
+    match = _OPENSHIFTAPPS_CLUSTER_RE.search(cluster_ctx)
+    if match:
+        return match.group(1)
     match = re.search(r"/api-([^-]+-[^-]+-[^-]+)", cluster_ctx)
     if match:
         return match.group(1)
-    # Fallback: try to extract from context name
     if "/" in cluster_ctx:
-        parts = cluster_ctx.split("/")
-        if len(parts) > 1:
-            # Try to extract from parts
-            for part in parts:
-                if "api-" in part:
-                    match = re.search(r"api-([^-]+-[^-]+-[^-]+)", part)
-                    if match:
-                        return match.group(1)
-    # Last resort: return last part after /
+        for part in cluster_ctx.split("/"):
+            if "api-" in part:
+                match = re.search(r"api-([^-]+-[^-]+-[^-]+)", part)
+                if match:
+                    return match.group(1)
     return cluster_ctx.split("/")[-1] if "/" in cluster_ctx else cluster_ctx
 
 
