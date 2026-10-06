@@ -249,6 +249,9 @@ find_context_for_api() {
 
     while IFS= read -r ctx; do
         ctx="${ctx#context/}"
+        case "${ctx}" in
+            *system:serviceaccount*) continue ;;
+        esac
         server="$(oc config view --context="${ctx}" --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || true)"
         if [[ "$(normalize_url "${server}")" == "${target_api}" ]]; then
             echo "${ctx}"
