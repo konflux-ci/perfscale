@@ -3543,9 +3543,7 @@ def _get_component_for_pod(session, host, token, pod, namespace, end_time, days,
     )
 
 
-def _fill_component_cache_for_pods(
-    session, host, token, pods, end_time, component_cache, sem=None
-):
+def _fill_component_cache_for_pods(session, host, token, pods, end_time, component_cache, sem=None):
     """Batch-fill component/application cache for pods still missing labels.
 
     pods: iterable of (pod_name, namespace). Mutates component_cache in place.
@@ -4184,7 +4182,7 @@ def collect_individual_pod_executions(
                             )
                     return records
 
-                # Build batch jobs: (step, step_name, namespace, [pods...]) — transport batches only.
+                # Batch jobs: (step, step_name, namespace, pods) — transport batches only.
                 pods_by_ns = defaultdict(list)
                 for pod_name, namespace in pods:
                     pods_by_ns[namespace].append(pod_name)
