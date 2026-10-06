@@ -3326,8 +3326,14 @@ def _first_label_present(mapping, keys):
 
 
 def _escape_promql_regex(value):
-    """Escape a literal string for safe use inside a PromQL regex (pod=~\"...\")."""
-    return re.sub(r"([\\.^$|?*+()\[\]{}])", r"\\\1", value)
+    """Escape a literal for PromQL regex inside a double-quoted matcher.
+
+    PromQL double-quoted strings use Go-style escapes, so a regex metacharacter
+    escape must appear as two backslashes in the query text (e.g. ``\\\\.`` for
+    ``.``). A single backslash would be an unknown escape and Prometheus rejects
+    the query with HTTP 400.
+    """
+    return re.sub(r"([\\.^$|?*+()\[\]{}])", r"\\\\\1", value)
 
 
 def _pod_regex_for_batch(pod_names):
@@ -3543,8 +3549,13 @@ def _get_component_for_pod(session, host, token, pod, namespace, end_time, days,
     )
 
 
-def _fill_component_cache_for_pods(session, host, token, pods, end_time, component_cache, sem=None):
+def _fill_component_cache_for_pods(
+    session, host, token, pods, end_time, lookback_seconds, component_cache, sem=None
+):
     """Batch-fill component/application cache for pods still missing labels.
+
+    Uses query_range over the full lookback window (not an instant query at
+    end_time) so historical pods that finished earlier still resolve labels.
 
     pods: iterable of (pod_name, namespace). Mutates component_cache in place.
     Returns the number of Prometheus HTTP queries issued.
@@ -3555,6 +3566,13 @@ def _fill_component_cache_for_pods(session, host, token, pods, end_time, compone
         comp, _app = component_cache.get(key, ("N/A", "N/A"))
         if not comp or comp == "N/A":
             missing_by_ns[namespace or ""].append(pod_name)
+
+    try:
+        end_ts = int(end_time)
+        start_ts = end_ts - int(lookback_seconds or 86400)
+    except (TypeError, ValueError):
+        end_ts = None
+        start_ts = None
 
     http_queries = 0
     for namespace, pod_list in missing_by_ns.items():
@@ -3569,9 +3587,21 @@ def _fill_component_cache_for_pods(session, host, token, pods, end_time, compone
             else:
                 query = f'kube_pod_labels{{pod=~"({regex})"}}'
             try:
-                resp = _query_prometheus_instant(
-                    session, host, token, query, eval_time=end_time, timeout=60, sem=sem
-                )
+                if start_ts is not None and end_ts is not None:
+                    resp = _query_prometheus_range(
+                        session,
+                        host,
+                        token,
+                        query,
+                        start_ts,
+                        end_ts,
+                        timeout=60,
+                        sem=sem,
+                    )
+                else:
+                    resp = _query_prometheus_instant(
+                        session, host, token, query, eval_time=end_time, timeout=60, sem=sem
+                    )
                 http_queries += 1
             except Exception:  # nosec B110
                 http_queries += 1
@@ -3738,9 +3768,12 @@ def collect_individual_pod_executions(
     }
     samples_lock = Lock()
     # Cap concurrent Prom HTTP across cluster workers to avoid stampedes.
+    # Allow up to pll_pods batch jobs × pll_queries in-flight metric requests
+    # per cluster (matches --pll-pods / --pll-queries as throughput knobs).
     _pll_q_cap = max(1, min(4, pll_queries or 2))
+    _pll_pods_cap = max(1, pll_pods or 8)
     _cluster_cap = max(1, parallel_clusters or 1)
-    prom_sem = Semaphore(max(8, _cluster_cap * _pll_q_cap * 2))
+    prom_sem = Semaphore(max(8, _cluster_cap * _pll_q_cap * _pll_pods_cap))
 
     def add_debug_sample(reason, cluster_name, pod_name="", namespace="", step="", detail=""):
         if not debug:
@@ -3911,6 +3944,8 @@ def collect_individual_pod_executions(
                             app = _first_label_present(metric, _APPLICATION_LABEL_KEYS)
                             component_cache[key] = (comp, app)
                 except Exception as e:
+                    # Count the failed list request so http_queries reflects traffic sent.
+                    cluster_stats["http_queries"] += 1
                     cluster_stats["list_failures"] += 1
                     add_debug_sample(
                         "list_pods_failure",
@@ -3938,6 +3973,7 @@ def collect_individual_pod_executions(
                     token,
                     pods,
                     end_time,
+                    lookback_seconds,
                     component_cache,
                     sem=prom_sem,
                 )
@@ -3950,8 +3986,11 @@ def collect_individual_pod_executions(
                     }
 
                 stats_lock = Lock()
-                query_pool_size = max(1, min(4, pll_queries))
-                # Shared pool for the 4 metric queries inside each batch job.
+                # Shared pool sized so --pll-pods × --pll-queries concurrent metric
+                # requests can actually run (batch jobs would otherwise serialize
+                # on a tiny pool capped at min(4, pll_queries)).
+                _pll_pods_eff = max(1, pll_pods)
+                query_pool_size = max(1, _pll_pods_eff * min(4, pll_queries))
                 query_executor = ThreadPoolExecutor(max_workers=query_pool_size)
 
                 def _run_instant_metric(metric_query_pair):
@@ -3972,6 +4011,8 @@ def collect_individual_pod_executions(
                                 cluster_stats["http_queries"] += 1
                             return metric_name, result
                         except Exception as exc:
+                            with stats_lock:
+                                cluster_stats["http_queries"] += 1
                             last_exc = exc
                             if attempt < 2:
                                 time.sleep(0.4 * (attempt + 1))
@@ -4104,9 +4145,11 @@ def collect_individual_pod_executions(
                                 continue
 
                             mem_max, mem_ts = mem_by_pod[pod_name]
-                            first_timestamp = pod_first_ts.get(key)
-                            if first_timestamp is None:
-                                first_timestamp = mem_ts
+                            # Prefer the step's memory-metric timestamp so reports
+                            # date the step when it ran, not when the pod first appeared.
+                            first_timestamp = (
+                                mem_ts if mem_ts is not None else pod_first_ts.get(key)
+                            )
                             if mem_max == 0 and first_timestamp is None:
                                 with stats_lock:
                                     cluster_stats["empty_metrics"] += 1
@@ -4196,7 +4239,6 @@ def collect_individual_pod_executions(
                                 (step, step_name, namespace, ns_pods[i : i + POD_BATCH_SIZE])
                             )
 
-                _pll_pods_eff = max(1, pll_pods)
                 try:
                     with ThreadPoolExecutor(max_workers=_pll_pods_eff) as batch_exe:
                         for batch_records in batch_exe.map(_process_pod_batch, batch_jobs):
