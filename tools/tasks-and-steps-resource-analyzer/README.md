@@ -278,11 +278,15 @@ kubeconfig context (not every Konflux entry).
 
 ### Non-standard API URLs (HCP / IBM Lightwell)
 
-Most clusters use a 2-field `oclogin` row (console only); the API is derived automatically.
-Clusters whose API cannot be derived need an explicit 3-field row:
+Most clusters use a 2-field `oclogin` row (console only); the API is derived automatically
+(`apps.` → `api.`, port 6443). HCP consoles (`apps.rosa.`) cannot use that rewrite — it
+produces a non-existent `api.rosa...:6443` host. Those rows are 3-field, matching
+`oclogin-all`'s `api_url_override` (`api.<cluster>.<hash>.p3...:443`, no `rosa.`).
+IBM Lightwell also needs an explicit 3-field row:
 
 ```text
-kflux-lw-p01  <CONSOLE_URL>  <API_URL>
+kflux-c-prd-e01  <CONSOLE_URL>  <API_URL>
+kflux-lw-p01     <CONSOLE_URL>  <API_URL>
 ```
 
 Example (IBM Lightwell — private VPE host + non-6443 port):
@@ -296,6 +300,10 @@ resolves correctly, but does **not** include Lightwell in the default `CLUSTERS`
 cluster access is limited to a small IBM IAM set, so an all-cluster login would create
 contexts most analysts cannot usefully query. HCP clusters (`kflux-c-*-*`) use the same
 override mechanism with `:443` API hosts and **are** in the default list.
+
+`oclogin-all` ignores `system:serviceaccount` kubeconfig leftovers when deciding whether
+a cluster is already logged in, so an old prometheus-reader SA cannot mask a dead user
+session.
 
 Alternatively, log into clusters individually using `oc login` and ensure all contexts are
 present in your `~/.kube/config`.
