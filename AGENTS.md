@@ -28,6 +28,12 @@ Grafana dashboards and operational tools for the Konflux Performance & Scale tea
 - `tools/oomkill-and-crashloopbackoff-detector/` - Parallel OOMKilled/CrashLoopBackOff scanner across OpenShift clusters.
 - `tools/tasks-and-steps-resource-analyzer/` - Extracts per-task/step Memory & CPU metrics from Prometheus and recommends resource limits.
 
+## Pattern References
+
+- New Grafana JSON dashboard: see `grafana/dashboards/debugging-performance.json` for in-cluster JSON; strip UI export noise with `cleanup-dashboard.sh`, add the new dashboard to `grafana/dashboard.yaml` and `grafana/kustomization.yaml`
+- Grafonnet dashboard source: see `grafonnet-workdir/src/loadtest-probe.jsonnet` for a Jsonnet dashboard; rebuild with `grafonnet-workdir/build.sh`
+- Single purpose/task scripts go to `tools/` directory
+
 ## Agent skills
 
 ### Issue tracker
