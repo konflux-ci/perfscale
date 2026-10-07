@@ -230,9 +230,11 @@ overwriting earlier runs.
 analyze_resource_limits.py          thin CLI shim → resource_analyzer.cli.main
 resource_analyzer/
   cli.py            argparse + Phase 1 / Phase 2 orchestration
-  prom.py           lookback helpers, Prom HTTP client, batched collection
+  prom.py           lookback helpers, Prom HTTP client
+  prom_collect.py   batched per-pod Prometheus collection across clusters
   stats.py          percentiles, recommendations, aggregate verification
-  reporting.py      HTML/JSON/CSV writers, cache paths, report banners
+  reporting.py      HTML banners, cache paths, CSV/HTML table writers
+  reporting_data.py analyzed/comparison JSON+HTML persistence
   clusters.py       kube contexts, connectivity, confirmation prompts
   task_yaml.py      Task YAML fetch/parse
   progress.py       terminal spinner
