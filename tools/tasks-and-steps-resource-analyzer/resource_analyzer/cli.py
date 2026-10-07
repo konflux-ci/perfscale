@@ -6,6 +6,7 @@ import sys
 import time
 from collections import defaultdict
 from datetime import datetime
+from typing import Any
 
 from .clusters import (
     check_cluster_connectivity,
@@ -49,7 +50,7 @@ from .task_yaml import (
 )
 
 
-def main():
+def main() -> Any:
     _script_start = time.time()
     parser = argparse.ArgumentParser(
         description="Analyze resource consumption and provide recommendations",

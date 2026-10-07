@@ -7,6 +7,7 @@ import sys
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from .paths import TOOL_DIR
 from .reporting import (
@@ -30,7 +31,7 @@ def save_analyzed_data(
     steps_without_observability_data=None,
     cluster_coverage_report=None,
     days_requested=None,
-):
+) -> Any:
     """Save analyzed data (CSV) as HTML and JSON files.
 
     Args:
@@ -229,7 +230,7 @@ def save_analyzed_data(
 
 def _write_one_step_detailed_files(
     cache_dir, task_name, step_name, step_executions, date_str, timestamp_suffix=None
-):
+) -> Any:
     """Write HTML, JSON, and CSV for a single step.
 
     Used by save_detailed_per_step_data.
@@ -439,7 +440,7 @@ def _write_one_step_detailed_files(
     return html_path, json_path, csv_path
 
 
-def save_detailed_per_step_data(task_name, executions_data, date_str):
+def save_detailed_per_step_data(task_name, executions_data, date_str) -> Any:
     """Save detailed per-step pod execution data as one HTML, JSON, and CSV per step.
 
     Filenames: {task}_analyzed_data_detailed_step_{step_name}_{date}[_{time}].html/json/csv
@@ -483,7 +484,7 @@ def save_detailed_per_step_data(task_name, executions_data, date_str):
     return result_paths
 
 
-def split_existing_detailed_per_step_json_to_per_step_files(json_path):
+def split_existing_detailed_per_step_json_to_per_step_files(json_path) -> Any:
     """One-time helper: read a combined detailed_per_step JSON and write one HTML/JSON/CSV per step.
 
     Args:
@@ -529,7 +530,7 @@ def save_comparison_data_all_bases(
     cluster_coverage_report=None,
     days_requested=None,
     detailed_executions=None,
-):
+) -> Any:
     """Save comparison data for all base metrics as HTML and JSON.
 
     Args:
@@ -834,7 +835,7 @@ def save_comparison_data_all_bases(
     return html_path, json_path
 
 
-def load_analyzed_data(task_name, date_str):
+def load_analyzed_data(task_name, date_str) -> Any:
     """Load analyzed data from JSON file.
 
     Tries date-only format first, then looks for latest date+timestamp format.
@@ -883,7 +884,7 @@ def load_analyzed_data(task_name, date_str):
         return None
 
 
-def load_comparison_data(task_name, date_str, margin_pct):
+def load_comparison_data(task_name, date_str, margin_pct) -> Any:
     """Load comparison data from JSON file for a specific margin.
 
     Tries date-only format first, then looks for latest date+timestamp format.
@@ -935,7 +936,7 @@ def load_comparison_data(task_name, date_str, margin_pct):
         return None
 
 
-def find_latest_analysis_date(task_name):
+def find_latest_analysis_date(task_name) -> Any:
     """Find the latest analysis date for a task.
 
     Handles both date-only (YYYYMMDD) and date+timestamp (YYYYMMDD_HHMMSS) formats.

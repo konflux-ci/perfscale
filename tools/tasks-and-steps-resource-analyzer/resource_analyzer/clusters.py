@@ -3,11 +3,12 @@
 import re
 import subprocess
 import sys
+from typing import Any
 
 from .task_yaml import normalize_step_name_for_compare
 
 
-def read_wrapper_config(wrapper_path):
+def read_wrapper_config(wrapper_path) -> Any:
     """Read TASK_NAME and STEPS from wrapper script.
 
     Returns:
@@ -61,7 +62,7 @@ def read_wrapper_config(wrapper_path):
     return task_name, steps_list, is_defined
 
 
-def validate_wrapper_steps(wrapper_task, wrapper_steps, yaml_task, yaml_steps):
+def validate_wrapper_steps(wrapper_task, wrapper_steps, yaml_task, yaml_steps) -> Any:
     """Validate wrapper-defined task and steps against YAML file.
 
     Args:
@@ -110,14 +111,14 @@ _OPENSHIFTAPPS_CLUSTER_RE = re.compile(
 _CONNECTIVITY_TIMEOUT_SEC = 15
 
 
-def is_konflux_user_context(ctx):
+def is_konflux_user_context(ctx) -> Any:
     """Return True for a human oc/oclogin Konflux context, not SA or unrelated clusters."""
     if not ctx or _SA_CONTEXT_MARKER in ctx:
         return False
     return bool(_KONFLUX_USER_CONTEXT_RE.search(ctx))
 
 
-def list_kubectl_context_names():
+def list_kubectl_context_names() -> Any:
     result = subprocess.run(
         ["kubectl", "config", "get-contexts", "-o", "name"],
         capture_output=True,
@@ -129,7 +130,7 @@ def list_kubectl_context_names():
     return [c.strip() for c in result.stdout.splitlines() if c.strip()]
 
 
-def _wrapper_contexts_assignment(wrapper_path):
+def _wrapper_contexts_assignment(wrapper_path) -> Any:
     with open(wrapper_path) as f:
         for line in f:
             stripped = line.strip()
@@ -142,7 +143,7 @@ def _wrapper_contexts_assignment(wrapper_path):
     return None
 
 
-def resolve_wrapper_contexts(wrapper_path):
+def resolve_wrapper_contexts(wrapper_path) -> Any:
     """Resolve kubeconfig context names from the wrapper CONTEXTS= line.
 
     Returns:
@@ -178,7 +179,7 @@ def resolve_wrapper_contexts(wrapper_path):
     return None, "Could not execute CONTEXTS command"
 
 
-def select_analyzer_contexts(contexts, announce_ignored=False):
+def select_analyzer_contexts(contexts, announce_ignored=False) -> Any:
     """Keep one Konflux user context per cluster; drop SA leftovers and other clusters."""
     konflux = []
     ignored = []
@@ -208,7 +209,7 @@ def select_analyzer_contexts(contexts, announce_ignored=False):
     return selected
 
 
-def check_cluster_connectivity(wrapper_path):
+def check_cluster_connectivity(wrapper_path) -> Any:
     """Check connectivity to Konflux clusters from the wrapper / kubeconfig.
 
     Probes with ``kubectl --context`` so the current kubeconfig context is left unchanged.
@@ -264,7 +265,7 @@ def check_cluster_connectivity(wrapper_path):
     return all_connected, report
 
 
-def prompt_confirmation(task_name, steps, source="extracted from YAML"):
+def prompt_confirmation(task_name, steps, source="extracted from YAML") -> Any:
     """Prompt user for confirmation before proceeding.
 
     Args:
@@ -301,7 +302,7 @@ def prompt_confirmation(task_name, steps, source="extracted from YAML"):
             print("Please enter 'y' or 'n'", file=sys.stderr)
 
 
-def extract_cluster_list(wrapper_path):
+def extract_cluster_list(wrapper_path) -> Any:
     """Extract Konflux user cluster contexts from the wrapper / kubeconfig.
 
     Returns:
@@ -314,7 +315,7 @@ def extract_cluster_list(wrapper_path):
     return select_analyzer_contexts(contexts)
 
 
-def get_cluster_display_name(cluster_ctx):
+def get_cluster_display_name(cluster_ctx) -> Any:
     """Extract short cluster display name from full context string.
 
     Display-only. Operations still use the full context string.

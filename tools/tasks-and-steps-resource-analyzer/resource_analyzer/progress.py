@@ -4,12 +4,13 @@ import shutil
 import sys
 import time
 from threading import Lock
+from typing import Any
 
 _PROGRESS_IO_LOCK = Lock()
 _MAX_ACTIVE_CLUSTERS_IN_SPINNER = 2
 
 
-def _terminal_width():
+def _terminal_width() -> Any:
     """Best-effort terminal width for truncating in-place progress lines."""
     try:
         return max(40, shutil.get_terminal_size(fallback=(80, 24)).columns)
@@ -17,7 +18,7 @@ def _terminal_width():
         return 80
 
 
-def _truncate_progress_line(message):
+def _truncate_progress_line(message) -> Any:
     """Fit message on one terminal row so \\r can overwrite it cleanly."""
     max_len = max(20, _terminal_width() - 1)
     if len(message) <= max_len:
@@ -25,7 +26,7 @@ def _truncate_progress_line(message):
     return message[: max_len - 1] + "…"
 
 
-def _progress_overwrite(message):
+def _progress_overwrite(message) -> Any:
     """Update the current progress line in place (no newline)."""
     message = _truncate_progress_line(message)
     with _PROGRESS_IO_LOCK:
@@ -33,7 +34,7 @@ def _progress_overwrite(message):
         sys.stderr.flush()
 
 
-def _progress_milestone(message):
+def _progress_milestone(message) -> Any:
     """Print a one-line milestone (e.g. cluster checkpoint), then free the line for the spinner.
 
     Clears any in-progress spinner row first so \\r overwrite cannot leave wrapped junk.
@@ -43,7 +44,7 @@ def _progress_milestone(message):
         sys.stderr.flush()
 
 
-def _spinner_thread(stop_event, progress_data=None, progress_lock=None, total_clusters=0):
+def _spinner_thread(stop_event, progress_data=None, progress_lock=None, total_clusters=0) -> Any:
     """Display a spinning wheel with percentage progress while collecting data from clusters.
 
     Shows overall cluster completion percentage plus a live pod-progress counter for each
