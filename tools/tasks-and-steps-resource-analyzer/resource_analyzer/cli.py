@@ -302,7 +302,7 @@ Examples:
                     by_step[step].append(row)
 
             # Analyze each step for all base metrics
-            all_recommendations_by_base = {
+            all_recommendations_by_base: dict[str, list[Any]] = {
                 "max": [],
                 "p95": [],
                 "p90": [],
@@ -651,7 +651,7 @@ Examples:
         )
         if args.file:
             print(f"\nTask: {task_name}", file=sys.stderr)
-            print(f"Steps: {', '.join(steps)}", file=sys.stderr)
+            print(f"Steps: {', '.join(steps or [])}", file=sys.stderr)
             print(f"Lookback: {lookback_label}", file=sys.stderr)
         # Show first few lines of CSV to help debug
         if csv_data:

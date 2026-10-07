@@ -19,7 +19,7 @@ except ImportError:
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
-def convert_github_url_to_raw(url) -> Any:
+def convert_github_url_to_raw(url: Any) -> Any:
     """Convert GitHub blob URL to raw content URL."""
     # Convert blob URL to raw URL
     # https://github.com/user/repo/blob/branch/path -> https://raw.githubusercontent.com/user/repo/branch/path
@@ -31,7 +31,7 @@ def convert_github_url_to_raw(url) -> Any:
     return url
 
 
-def fetch_yaml_content(file_path_or_url) -> Any:
+def fetch_yaml_content(file_path_or_url: Any) -> Any:
     """Fetch YAML content from file path or URL."""
     if file_path_or_url.startswith("http://") or file_path_or_url.startswith("https://"):
         url = convert_github_url_to_raw(file_path_or_url)
@@ -51,7 +51,7 @@ def fetch_yaml_content(file_path_or_url) -> Any:
             return yaml.safe_load(f), str(path.absolute())
 
 
-def extract_task_info(yaml_content) -> Any:
+def extract_task_info(yaml_content: Any) -> Any:
     """Extract task name, step names, and current resource limits from Tekton Task YAML."""
     task_name = yaml_content.get("metadata", {}).get("name", "")
     steps = []
@@ -114,7 +114,7 @@ def extract_task_info(yaml_content) -> Any:
     return task_name, steps, default_resources, current_resources
 
 
-def normalize_step_name_for_compare(name) -> Any:
+def normalize_step_name_for_compare(name: Any) -> Any:
     """Strip Tekton step- prefix so YAML names match CSV step column."""
     if not name:
         return ""
@@ -124,7 +124,7 @@ def normalize_step_name_for_compare(name) -> Any:
     return s
 
 
-def compute_steps_missing_observability(declared_steps, by_step) -> Any:
+def compute_steps_missing_observability(declared_steps: Any, by_step: dict[str, list[Any]]) -> Any:
     """Declared YAML steps that have no rows in aggregated observability data.
 
     Args:
