@@ -191,7 +191,7 @@ def select_analyzer_contexts(contexts, announce_ignored=False) -> Any:
         else:
             ignored.append(ctx)
 
-    selected_by_name = {}
+    selected_by_name: dict[str, str] = {}
     for ctx in konflux:
         name = get_cluster_display_name(ctx)
         prev = selected_by_name.get(name)

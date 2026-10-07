@@ -177,7 +177,7 @@ def _series_peak_and_first_ts(series) -> Any:
 
 def _peaks_by_pod(prom_response) -> Any:
     """Map pod name -> (peak, first_ts) from a Prometheus instant/range response."""
-    out = {}
+    out: dict[str, tuple[Any, Any]] = {}
     if not isinstance(prom_response, dict):
         return out
     for series in prom_response.get("data", {}).get("result", []) or []:

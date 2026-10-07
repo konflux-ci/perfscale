@@ -406,8 +406,8 @@ def update_yaml_file(
                 in_compute_resources = False
                 in_limits = False
                 in_requests = False
-                limits_indent = None
-                requests_indent = None
+                limits_indent: int | None = None
+                requests_indent: int | None = None
                 memory_updated_limits = False
                 cpu_updated_limits = False
                 memory_updated_requests = False
@@ -536,7 +536,7 @@ def update_yaml_file(
                     )
                     if "requests:" in next_line and next_indent == expected_requests_indent:
                         # Before leaving limits section, add missing fields
-                        if in_limits and not cpu_updated_limits:
+                        if in_limits and not cpu_updated_limits and limits_indent is not None:
                             indent = " " * (limits_indent + 2)
                             lines.insert(j, f"{indent}cpu: {resources['cpu']}\n")
                             cpu_updated_limits = True
@@ -565,6 +565,7 @@ def update_yaml_file(
                         # Update memory in limits (should be indented 2 spaces more than limits:)
                         if (
                             re.match(r"^\s+memory:\s+", next_line)
+                            and limits_indent is not None
                             and next_indent == limits_indent + 2
                         ):
                             indent = next_line[: len(next_line) - len(next_line.lstrip())]
@@ -580,7 +581,9 @@ def update_yaml_file(
 
                         # Update cpu in limits (should be indented 2 spaces more than limits:)
                         elif (
-                            re.match(r"^\s+cpu:\s+", next_line) and next_indent == limits_indent + 2
+                            re.match(r"^\s+cpu:\s+", next_line)
+                            and limits_indent is not None
+                            and next_indent == limits_indent + 2
                         ):
                             indent = next_line[: len(next_line) - len(next_line.lstrip())]
                             lines[j] = f"{indent}cpu: {resources['cpu']}\n"
@@ -621,6 +624,7 @@ def update_yaml_file(
                         # requests:)
                         if (
                             re.match(r"^\s+memory:\s+", next_line)
+                            and requests_indent is not None
                             and next_indent == requests_indent + 2
                         ):
                             indent = next_line[: len(next_line) - len(next_line.lstrip())]
@@ -637,6 +641,7 @@ def update_yaml_file(
                         # Update cpu in requests (should be indented 2 spaces more than requests:)
                         elif (
                             re.match(r"^\s+cpu:\s+", next_line)
+                            and requests_indent is not None
                             and next_indent == requests_indent + 2
                         ):
                             indent = next_line[: len(next_line) - len(next_line.lstrip())]

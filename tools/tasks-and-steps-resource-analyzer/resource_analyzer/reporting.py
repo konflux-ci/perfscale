@@ -267,7 +267,9 @@ def _compute_violators_for_step(detailed_executions, step_name, mem_base, cpu_ba
     # Normalise the step name we look for (executions may carry it without 'step-' prefix)
     step_bare = step_name.removeprefix("step-") if step_name.startswith("step-") else step_name
 
-    groups = _dd(lambda: {"mem_vals": [], "cpu_vals": []})
+    groups: dict[tuple[Any, ...], dict[str, list[float]]] = _dd(
+        lambda: {"mem_vals": [], "cpu_vals": []}
+    )
     for r in detailed_executions:
         r_step = r.get("step", "")
         r_step_bare = r_step.removeprefix("step-") if r_step.startswith("step-") else r_step
@@ -291,7 +293,7 @@ def _compute_violators_for_step(detailed_executions, step_name, mem_base, cpu_ba
     if not groups:
         return {}
 
-    result = _dd(lambda: _dd(list))
+    result: dict[Any, dict[Any, list[dict[str, Any]]]] = _dd(lambda: _dd(list))
     for (ns, app, comp, cluster), vals in groups.items():
         mem_max = max(vals["mem_vals"]) if vals["mem_vals"] else 0
         cpu_max = max(vals["cpu_vals"]) if vals["cpu_vals"] else 0

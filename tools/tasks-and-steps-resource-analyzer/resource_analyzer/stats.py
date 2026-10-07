@@ -11,7 +11,7 @@ from .task_yaml import normalize_step_name_for_compare
 
 def parse_csv_data(csv_text) -> Any:
     """Parse CSV data (same format as wrapper script or detailed_executions_to_csv output)."""
-    data = []
+    data: list[dict[str, Any]] = []
     lines = [line for line in csv_text.strip().split("\n") if line.strip()]
     if not lines:
         return data

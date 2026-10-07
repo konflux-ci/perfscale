@@ -33,14 +33,11 @@ check:
 check-all:
 	pre-commit run --all-files
 
-# Scoped to tools that are currently mypy-clean. oc_get_ooms.py,
-# s3_tools.py, and resource_analyzer/ still need typing cleanup before
-# they can be included (resource_analyzer has agentready annotations
-# but is not yet mypy-clean once those defs are considered typed).
+# Scoped to tools that are currently mypy-clean. oc_get_ooms.py and
+# s3_tools.py still need typing cleanup before they can be included.
 type-check:
 	uvx mypy \
-		tools/tasks-and-steps-resource-analyzer/format_csv_table.py \
-		tools/tasks-and-steps-resource-analyzer/get_component_for_pod.py \
+		tools/tasks-and-steps-resource-analyzer/ \
 		tools/oomkill-and-crashloopbackoff-detector/html_export.py \
 		tools/oomkill-and-crashloopbackoff-detector/test_artifact_validation.py \
 		--ignore-missing-imports
