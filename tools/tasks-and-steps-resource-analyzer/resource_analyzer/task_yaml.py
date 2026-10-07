@@ -1,21 +1,8 @@
 """Task YAML fetch/parse helpers."""
 
-import argparse
-import csv
-import html
-import json
-import os
 import re
-import shutil
-import subprocess
 import sys
-import tempfile
-import time
-from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
 from pathlib import Path
-from threading import Event, Lock, Semaphore, Thread
 
 try:
     import requests
@@ -29,6 +16,7 @@ except ImportError:
     sys.exit(1)
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 
 def convert_github_url_to_raw(url):
     """Convert GitHub blob URL to raw content URL."""
@@ -152,4 +140,3 @@ def compute_steps_missing_observability(declared_steps, by_step):
     }
     seen = set(by_step.keys()) if by_step else set()
     return sorted(declared - seen)
-

@@ -1,25 +1,16 @@
 """Optional YAML update / diff helpers (manual apply remains the default UX)."""
 
-import argparse
-import csv
-import html
-import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 import tempfile
-import time
-from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from pathlib import Path
-from threading import Event, Lock, Semaphore, Thread
+
+from .paths import TOOL_DIR
+from .task_yaml import normalize_step_name_for_compare
 
 try:
-    import requests
-    import urllib3
     import yaml
 except ImportError:
     print(
@@ -28,12 +19,6 @@ except ImportError:
     )
     sys.exit(1)
 
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-from .paths import TOOL_DIR
-
-from .stats import cores_to_kubernetes, mb_to_kubernetes
-from .task_yaml import normalize_step_name_for_compare
 
 def generate_diff_patch(original_yaml, updated_yaml, file_path_or_url):
     """Generate a diff/patch file for remote YAML files."""
@@ -762,5 +747,3 @@ def update_yaml_file(yaml_path, recommendations, original_yaml, file_path_or_url
         return updated
 
     return False
-
-

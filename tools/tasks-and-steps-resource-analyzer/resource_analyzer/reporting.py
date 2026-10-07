@@ -1,46 +1,21 @@
 """HTML/JSON/CSV report writers, cache paths, and report banners."""
 
-import argparse
 import csv
 import html
 import json
-import os
 import re
-import shutil
-import subprocess
 import sys
-import tempfile
-import time
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
-from threading import Event, Lock, Semaphore, Thread
-
-try:
-    import requests
-    import urllib3
-    import yaml
-except ImportError:
-    print(
-        "Error: Missing required library. Install with: pip install requests pyyaml",
-        file=sys.stderr,
-    )
-    sys.exit(1)
-
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 from .paths import TOOL_DIR
-
 from .progress import _progress_milestone
-from .task_yaml import normalize_step_name_for_compare
 from .stats import (
-    cores_to_kubernetes,
     mb_to_kubernetes,
-    parse_cpu_value,
-    round_cpu_to_standard,
-    round_memory_to_standard,
 )
+from .task_yaml import normalize_step_name_for_compare
+
 
 def _html_steps_missing_observability_banner(steps_missing):
     """HTML notice when YAML declares steps that did not appear in aggregated metrics."""
@@ -431,7 +406,6 @@ def _html_violators_block(
   </div>
 </details>
 """
-
 
 
 def get_cache_file_path(task_name):
@@ -1967,4 +1941,3 @@ def find_latest_analysis_date(task_name):
 
     # Return the latest date (already in YYYYMMDD format, so lexicographic sort works)
     return max(dates)
-
