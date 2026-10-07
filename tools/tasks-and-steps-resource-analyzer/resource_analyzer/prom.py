@@ -5,6 +5,7 @@ import re
 import subprocess
 import sys
 from collections import defaultdict
+from typing import Any
 
 from .paths import TOOL_DIR
 
@@ -21,7 +22,7 @@ except ImportError:
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
-def format_promql_duration(seconds):
+def format_promql_duration(seconds) -> Any:
     """Format a lookback window for PromQL range selectors (e.g. 1d, 6h, 90m)."""
     seconds = int(seconds)
     if seconds <= 0:
@@ -35,7 +36,7 @@ def format_promql_duration(seconds):
     return f"{seconds}s"
 
 
-def format_lookback_label(days, hours):
+def format_lookback_label(days, hours) -> Any:
     """Human-readable lookback like '7d', '6h', or '1d+6h'."""
     parts = []
     if days:
@@ -45,7 +46,7 @@ def format_lookback_label(days, hours):
     return "+".join(parts) if parts else "0"
 
 
-def resolve_lookback_seconds(days, hours):
+def resolve_lookback_seconds(days, hours) -> Any:
     """Combine --days and --hours into a total lookback in seconds."""
     days = int(days or 0)
     hours = int(hours or 0)
@@ -57,7 +58,7 @@ def resolve_lookback_seconds(days, hours):
     return total
 
 
-def _empty_collection_counters():
+def _empty_collection_counters() -> Any:
     return {
         "pods_listed": 0,
         "pods_queried": 0,
@@ -108,7 +109,7 @@ _APPLICATION_LABEL_KEYS = (
 )
 
 
-def _merge_counters(dest, src):
+def _merge_counters(dest, src) -> Any:
     for key, value in src.items():
         dest[key] = dest.get(key, 0) + value
 
@@ -116,7 +117,7 @@ def _merge_counters(dest, src):
 DEBUG_SKIP_SAMPLE_LIMIT = 15
 
 
-def _first_label_present(mapping, keys):
+def _first_label_present(mapping, keys) -> Any:
     """Return the first non-empty label value from mapping for the given keys."""
     for key in keys:
         value = mapping.get(key)
@@ -125,7 +126,7 @@ def _first_label_present(mapping, keys):
     return "N/A"
 
 
-def _escape_promql_regex(value):
+def _escape_promql_regex(value) -> Any:
     """Escape a literal for PromQL regex inside a double-quoted matcher.
 
     PromQL double-quoted strings use Go-style escapes, so a regex metacharacter
@@ -136,12 +137,12 @@ def _escape_promql_regex(value):
     return re.sub(r"([\\.^$|?*+()\[\]{}])", r"\\\\\1", value)
 
 
-def _pod_regex_for_batch(pod_names):
+def _pod_regex_for_batch(pod_names) -> Any:
     """Build an alternation regex for a batch of pod names."""
     return "|".join(_escape_promql_regex(p) for p in pod_names if p)
 
 
-def _series_peak_and_first_ts(series):
+def _series_peak_and_first_ts(series) -> Any:
     """Return (peak_value, first_timestamp) from an instant or range series."""
     if not isinstance(series, dict):
         return 0.0, None
@@ -174,7 +175,7 @@ def _series_peak_and_first_ts(series):
     return peak, first_ts
 
 
-def _peaks_by_pod(prom_response):
+def _peaks_by_pod(prom_response) -> Any:
     """Map pod name -> (peak, first_ts) from a Prometheus instant/range response."""
     out = {}
     if not isinstance(prom_response, dict):
@@ -192,7 +193,7 @@ def _peaks_by_pod(prom_response):
     return out
 
 
-def _component_fallback_from_names(pod_name, namespace):
+def _component_fallback_from_names(pod_name, namespace) -> Any:
     """Best-effort component from namespace/pod name when labels are missing."""
     if namespace and namespace != "N/A" and namespace.endswith("-tenant"):
         potential = namespace[:-7]
@@ -205,7 +206,9 @@ def _component_fallback_from_names(pod_name, namespace):
     return "N/A", "N/A"
 
 
-def _query_prometheus_instant(session, host, token, query, eval_time=None, timeout=900, sem=None):
+def _query_prometheus_instant(
+    session, host, token, query, eval_time=None, timeout=900, sem=None
+) -> Any:
     """Query Prometheus /api/v1/query (instant); returns response JSON dict."""
     url = f"https://{host}/api/v1/query"
     params = {"query": query}
@@ -228,7 +231,7 @@ def _query_prometheus_instant(session, host, token, query, eval_time=None, timeo
             sem.release()
 
 
-def _query_prometheus_range(session, host, token, query, start, end, timeout=900, sem=None):
+def _query_prometheus_range(session, host, token, query, start, end, timeout=900, sem=None) -> Any:
     """Query Prometheus /api/v1/query_range in-process; returns response JSON dict."""
     url = f"https://{host}/api/v1/query_range"
     duration = int(end) - int(start)
@@ -257,7 +260,9 @@ def _query_prometheus_range(session, host, token, query, start, end, timeout=900
             sem.release()
 
 
-def _list_task_pods(session, host, token, task_name, end_time_secs, lookback_seconds, sem=None):
+def _list_task_pods(
+    session, host, token, task_name, end_time_secs, lookback_seconds, sem=None
+) -> Any:
     """List pods for a task via Prometheus kube_pod_labels; returns response JSON dict."""
     if lookback_seconds <= 0:
         lookback_seconds = 86400
@@ -286,13 +291,13 @@ def _list_task_pods(session, host, token, task_name, end_time_secs, lookback_sec
             sem.release()
 
 
-def _get_component_for_pod(session, host, token, pod, namespace, end_time, days, sem=None):
+def _get_component_for_pod(session, host, token, pod, namespace, end_time, days, sem=None) -> Any:
     """Get component/application labels from Prometheus kube_pod_labels.
 
     Returns (component, application) strings; each defaults to "N/A".
     """
 
-    def _fetch(query, use_range):
+    def _fetch(query, use_range) -> Any:
         if use_range:
             try:
                 start_ts = int(end_time) - (days * 24 * 60 * 60)
@@ -351,7 +356,7 @@ def _get_component_for_pod(session, host, token, pod, namespace, end_time, days,
 
 def _fill_component_cache_for_pods(
     session, host, token, pods, end_time, lookback_seconds, component_cache, sem=None
-):
+) -> Any:
     """Batch-fill component/application cache for pods still missing labels.
 
     Uses query_range over the full lookback window (not an instant query at
@@ -424,7 +429,9 @@ def _fill_component_cache_for_pods(
     return http_queries
 
 
-def extract_component_from_pod(pod_name, namespace, token, prom_host, end_time, days, session=None):
+def extract_component_from_pod(
+    pod_name, namespace, token, prom_host, end_time, days, session=None
+) -> Any:
     """Extract component and application from pod labels or namespace/pod name.
 
     Args:

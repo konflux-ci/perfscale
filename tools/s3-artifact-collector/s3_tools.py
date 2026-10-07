@@ -27,7 +27,7 @@ def connect() -> boto3.resource:
     return s3_resource
 
 
-def upload_file(s3_resource, local_name, bucket, remote_name):
+def upload_file(s3_resource: boto3.resource, local_name: str, bucket: str, remote_name: str) -> int:
     logging.debug(f"Going to upload {local_name}")
     s3_bucket = s3_resource.Bucket(name=bucket)
     s3_object = s3_bucket.Object(key=remote_name)
@@ -37,7 +37,7 @@ def upload_file(s3_resource, local_name, bucket, remote_name):
     return size
 
 
-def get_presigned_url(s3_resource, bucket, remote_name):
+def get_presigned_url(s3_resource: boto3.resource, bucket: str, remote_name: str) -> str:
     logging.debug(f"Going to generate signed URL for {remote_name}")
     download_url = s3_resource.meta.client.generate_presigned_url(
         ClientMethod="get_object",

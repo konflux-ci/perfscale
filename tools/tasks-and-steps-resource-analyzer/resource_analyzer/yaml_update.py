@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 from datetime import datetime
+from typing import Any
 
 from .paths import TOOL_DIR
 from .task_yaml import normalize_step_name_for_compare
@@ -20,7 +21,7 @@ except ImportError:
     sys.exit(1)
 
 
-def generate_diff_patch(original_yaml, updated_yaml, file_path_or_url):
+def generate_diff_patch(original_yaml, updated_yaml, file_path_or_url) -> Any:
     """Generate a diff/patch file for remote YAML files."""
     script_dir = TOOL_DIR
 
@@ -96,7 +97,9 @@ def generate_diff_patch(original_yaml, updated_yaml, file_path_or_url):
         os.unlink(upd_path)
 
 
-def update_yaml_file(yaml_path, recommendations, original_yaml, file_path_or_url=None, debug=False):
+def update_yaml_file(
+    yaml_path, recommendations, original_yaml, file_path_or_url=None, debug=False
+) -> Any:
     """Update YAML file with recommended resource limits, preserving original formatting."""
     updated = False
 

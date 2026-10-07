@@ -218,7 +218,7 @@ application_keys = [
 ]
 
 
-def first_present(mapping, keys):
+def first_present(mapping: dict, keys: list) -> str:
     for key in keys:
         value = mapping.get(key)
         if value:

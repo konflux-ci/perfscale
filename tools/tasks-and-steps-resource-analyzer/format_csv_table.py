@@ -8,7 +8,7 @@ import sys
 from io import StringIO
 
 
-def format_csv_as_table(csv_text):
+def format_csv_as_table(csv_text: str) -> str:
     """Format CSV text as a readable table."""
     lines = [line for line in csv_text.strip().split("\n") if line.strip()]
     if not lines:
