@@ -30,11 +30,9 @@ Grafana dashboards and operational tools for the Konflux Performance & Scale tea
 
 ## Pattern References
 
-- New Grafana JSON dashboard: see `grafana/dashboards/controllers-overview-a-n.json` for in-cluster JSON; strip UI export noise with `cleanup-dashboard.sh`
+- New Grafana JSON dashboard: see `grafana/dashboards/debugging-performance.json` for in-cluster JSON; strip UI export noise with `cleanup-dashboard.sh`, add the new dashboard to `grafana/dashboard.yaml` and `grafana/kustomization.yaml`
 - Grafonnet dashboard source: see `grafonnet-workdir/src/loadtest-probe.jsonnet` for a Jsonnet dashboard; rebuild with `grafonnet-workdir/build.sh`
-- PromQL query script: see `tools/tasks-and-steps-resource-analyzer/query_prometheus_instant.py` for an instant Prometheus query
-- Resource-limit analysis: see `tools/tasks-and-steps-resource-analyzer/analyze_resource_limits.py` for metric collection and limit recommendations
-- OOM/CrashLoop scan: see `tools/oomkill-and-crashloopbackoff-detector/oc_get_ooms.py` for multi-cluster detection
+- Single purpose/task scripts go to `tools/` directory
 
 ## Agent skills
 
