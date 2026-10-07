@@ -105,13 +105,10 @@ base metric to use, then update your task YAML accordingly.
   step/namespace via instant `/api/v1/query` + `max_over_time(...)`, not one
   `query_range` per pod. This cuts Prometheus HTTP volume sharply on busy tasks
   while preserving the same per-pod peak → P95/P90/median aggregation.
-- `--pll-queries N` (default 2, max 4): within each batch job, the 4 metric
-  queries (mem / cpu / io_read / io_write) share a pool of size N.
+- `--pll-queries N` (default 2, max 4): parallel metric queries per batch job
+  (mem / cpu / io_read / io_write). Combined with `--pll-pods`, the shared
+  per-cluster pool is sized to `pll_pods × pll_queries`.
 - `--pll-pods N` (default 8): number of batch jobs in flight per cluster worker.
-
-> **Follow-up (PR B):** a modular split of `analyze_resource_limits.py` into
-> `prom/` / `analyze/` / `report/` / `cli` packages is planned separately so this
-> efficiency change stays reviewable on its own.
 
 ---
 
@@ -230,24 +227,31 @@ overwriting earlier runs.
 ## Architecture
 
 ```
-analyze_resource_limits.py  (orchestrator)
-  │
-  ├── per-cluster worker (threaded, --pll-clusters N)
-  │     ├── kube_pod_labels list (in-process) + component label cache
-  │     └── batched instant /api/v1/query per step×namespace
-  │           pod batches ≤50; 4 metrics via --pll-queries N
-  │           batch jobs in parallel via --pll-pods N
-  │           peaks = max_over_time(...[lookback]); timestamps from list series
-  │
-  └── wrapper_for_promql_for_all_clusters.sh  (legacy aggregation path, batched per-cluster)
-        └── wrapper_for_promql.sh  (per-cluster: 50-pod batches, max/p95/p90/median)
+analyze_resource_limits.py          thin CLI shim → resource_analyzer.cli.main
+resource_analyzer/
+  cli.py            argparse + Phase 1 / Phase 2 orchestration
+  prom.py           lookback helpers, Prom HTTP client, batched collection
+  stats.py          percentiles, recommendations, aggregate verification
+  reporting.py      HTML/JSON/CSV writers, cache paths, report banners
+  clusters.py       kube contexts, connectivity, confirmation prompts
+  task_yaml.py      Task YAML fetch/parse
+  progress.py       terminal spinner
+  yaml_update.py    optional YAML diff helpers (manual apply remains default)
+  paths.py          TOOL_DIR (tool checkout root)
+
+Collection (primary --file path):
+  per-cluster worker (--pll-clusters N)
+    ├── kube_pod_labels list (in-process) + component label cache
+    └── batched instant /api/v1/query per step×namespace
+          pod batches ≤50; 4 metrics via --pll-queries N
+          batch jobs in parallel via --pll-pods N
+
+Legacy stdin/pipe path:
+  wrapper_for_promql_for_all_clusters.sh
+    └── wrapper_for_promql.sh  (50-pod batches)
 ```
 
-The primary path for `--file` usage is the Python threaded worker (batched instant
-queries). The shell wrapper path is the legacy stdin/pipe path.
-
-A follow-up refactor (separate PR/branch) will split this orchestrator into
-smaller modules without changing collection semantics.
+The CLI entrypoint path and flags are unchanged; only the Python layout is modular.
 
 ---
 
