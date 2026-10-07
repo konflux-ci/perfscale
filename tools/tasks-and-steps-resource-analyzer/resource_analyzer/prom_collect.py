@@ -378,7 +378,7 @@ def collect_individual_pod_executions(
                 def _process_pod_batch(item) -> Any:
                     """Process one (step, step_name, namespace, pod_batch) work item."""
                     step, step_name, namespace, pod_batch = item
-                    records = []
+                    records: list[dict[str, Any]] = []
                     with stats_lock:
                         cluster_stats["pods_queried"] += len(pod_batch)
 
@@ -628,7 +628,7 @@ def collect_individual_pod_executions(
             return [], cluster_stats
 
     total_clusters = len(set(get_cluster_display_name(c) for c in clusters))
-    progress_data = {
+    progress_data: dict[str, Any] = {
         "completed": [],
         "pods_listed": 0,
         "pods_queried": 0,
