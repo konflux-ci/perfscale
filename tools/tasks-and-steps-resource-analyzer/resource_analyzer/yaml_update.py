@@ -21,7 +21,7 @@ except ImportError:
     sys.exit(1)
 
 
-def generate_diff_patch(original_yaml, updated_yaml, file_path_or_url) -> Any:
+def generate_diff_patch(original_yaml: Any, updated_yaml: Any, file_path_or_url: Any) -> Any:
     """Generate a diff/patch file for remote YAML files."""
     script_dir = TOOL_DIR
 
@@ -98,7 +98,11 @@ def generate_diff_patch(original_yaml, updated_yaml, file_path_or_url) -> Any:
 
 
 def update_yaml_file(
-    yaml_path, recommendations, original_yaml, file_path_or_url=None, debug=False
+    yaml_path: str,
+    recommendations: Any,
+    original_yaml: Any,
+    file_path_or_url: Any = None,
+    debug: bool = False,
 ) -> Any:
     """Update YAML file with recommended resource limits, preserving original formatting."""
     updated = False

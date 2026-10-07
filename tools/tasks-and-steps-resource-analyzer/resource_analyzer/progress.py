@@ -18,7 +18,7 @@ def _terminal_width() -> Any:
         return 80
 
 
-def _truncate_progress_line(message) -> Any:
+def _truncate_progress_line(message: str) -> Any:
     """Fit message on one terminal row so \\r can overwrite it cleanly."""
     max_len = max(20, _terminal_width() - 1)
     if len(message) <= max_len:
@@ -26,7 +26,7 @@ def _truncate_progress_line(message) -> Any:
     return message[: max_len - 1] + "…"
 
 
-def _progress_overwrite(message) -> Any:
+def _progress_overwrite(message: str) -> Any:
     """Update the current progress line in place (no newline)."""
     message = _truncate_progress_line(message)
     with _PROGRESS_IO_LOCK:
@@ -34,7 +34,7 @@ def _progress_overwrite(message) -> Any:
         sys.stderr.flush()
 
 
-def _progress_milestone(message) -> Any:
+def _progress_milestone(message: str) -> Any:
     """Print a one-line milestone (e.g. cluster checkpoint), then free the line for the spinner.
 
     Clears any in-progress spinner row first so \\r overwrite cannot leave wrapped junk.
@@ -44,7 +44,12 @@ def _progress_milestone(message) -> Any:
         sys.stderr.flush()
 
 
-def _spinner_thread(stop_event, progress_data=None, progress_lock=None, total_clusters=0) -> Any:
+def _spinner_thread(
+    stop_event: Any,
+    progress_data: dict[str, Any] | None = None,
+    progress_lock: Any = None,
+    total_clusters: int = 0,
+) -> Any:
     """Display a spinning wheel with percentage progress while collecting data from clusters.
 
     Shows overall cluster completion percentage plus a live pod-progress counter for each

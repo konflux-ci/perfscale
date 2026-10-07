@@ -17,7 +17,7 @@ from .stats import (
 from .task_yaml import normalize_step_name_for_compare
 
 
-def _html_steps_missing_observability_banner(steps_missing) -> Any:
+def _html_steps_missing_observability_banner(steps_missing: list[str] | None) -> Any:
     """HTML notice when YAML declares steps that did not appear in aggregated metrics."""
     if not steps_missing:
         return ""
@@ -39,7 +39,9 @@ def _html_steps_missing_observability_banner(steps_missing) -> Any:
 # ---------------------------------------------------------------------------
 
 
-def compute_cluster_coverage_report(detailed_executions, days_requested) -> Any:
+def compute_cluster_coverage_report(
+    detailed_executions: list[dict[str, Any]], days_requested: int | float | None
+) -> Any:
     """Compute the actual data coverage window per cluster from collected executions.
 
     Returns a dict keyed by cluster display name:
@@ -73,13 +75,15 @@ def compute_cluster_coverage_report(detailed_executions, days_requested) -> Any:
         report[cluster] = {
             "oldest_date": oldest.strftime("%Y-%m-%d %H:%M:%S"),
             "days_covered": round(days_covered, 1),
-            "meets_requested": days_covered >= (days_requested * 0.9),  # 10% tolerance
+            "meets_requested": days_covered >= ((days_requested or 0) * 0.9),  # 10% tolerance
             "pod_count": len(timestamps),
         }
     return report
 
 
-def _html_cluster_coverage_banner(coverage_report, days_requested) -> Any:
+def _html_cluster_coverage_banner(
+    coverage_report: dict[str, Any], days_requested: int | float | None
+) -> Any:
     """HTML banner showing actual data coverage per cluster."""
     if not coverage_report:
         return ""
@@ -168,7 +172,7 @@ def _html_scrape_interval_note() -> Any:
     )
 
 
-def compute_heavy_tail_warnings(all_recommendations_by_base) -> Any:
+def compute_heavy_tail_warnings(all_recommendations_by_base: dict[str, list[Any]]) -> Any:
     """Return per-step heavy-tail warnings when max/p95 ratio exceeds threshold.
 
     Returns a list of dicts:
@@ -204,7 +208,7 @@ def compute_heavy_tail_warnings(all_recommendations_by_base) -> Any:
     return warnings
 
 
-def _html_heavy_tail_warnings_banner(warnings) -> Any:
+def _html_heavy_tail_warnings_banner(warnings: list[Any]) -> Any:
     """HTML banner surfacing heavy-tail distribution warnings for reviewers."""
     if not warnings:
         return ""
@@ -246,7 +250,9 @@ def _html_heavy_tail_warnings_banner(warnings) -> Any:
     )
 
 
-def _compute_violators_for_step(detailed_executions, step_name, mem_base, cpu_base) -> Any:
+def _compute_violators_for_step(
+    detailed_executions: list[dict[str, Any]], step_name: str, mem_base: float, cpu_base: float
+) -> Any:
     """Find pod executions that exceed a given memory or CPU base threshold for one step.
 
     Groups results as: namespace → application → list-of-component-dicts.
@@ -318,7 +324,12 @@ def _compute_violators_for_step(detailed_executions, step_name, mem_base, cpu_ba
 
 
 def _html_violators_block(
-    viol_by_ns, mem_base, cpu_base, base_label, step_display_name, _table_counter=None
+    viol_by_ns: Any,
+    mem_base: float,
+    cpu_base: float,
+    base_label: str,
+    step_display_name: str,
+    _table_counter: Any = None,
 ) -> Any:
     """Render a sortable, collapsible HTML block listing executions that exceed a base threshold.
 
@@ -335,10 +346,10 @@ def _html_violators_block(
             f"<strong>{html.escape(step_display_name)}</strong>.</p>\n"
         )
 
-    def _fmt_mb(mb) -> Any:
+    def _fmt_mb(mb: Any) -> Any:
         return f"{mb / 1024:.2f} Gi" if mb >= 1024 else f"{mb:.0f} Mi"
 
-    def _fmt_cpu(c) -> Any:
+    def _fmt_cpu(c: Any) -> Any:
         if c == 0:
             return "0m"
         return f"{int(c * 1000)}m" if c < 1 else f"{c:.3f}"
@@ -410,7 +421,7 @@ def _html_violators_block(
 """
 
 
-def get_cache_file_path(task_name) -> Any:
+def get_cache_file_path(task_name: str) -> Any:
     """Generate cache file path based on task name."""
     script_dir = TOOL_DIR
     cache_dir = script_dir / ".analyze_cache"
@@ -423,7 +434,13 @@ def get_cache_file_path(task_name) -> Any:
 
 
 def save_recommendations_cache(
-    task_name, file_path_or_url, recommendations, margin_pct, base, days, csv_data=None
+    task_name: str,
+    file_path_or_url: Any,
+    recommendations: Any,
+    margin_pct: int | float,
+    base: str,
+    days: int,
+    csv_data: str | None = None,
 ) -> Any:
     """Save recommendations to cache file based on task name.
 
@@ -473,7 +490,7 @@ def save_recommendations_cache(
     return cache_file, csv_html_path
 
 
-def load_recommendations_cache(task_name) -> Any:
+def load_recommendations_cache(task_name: str) -> Any:
     """Load recommendations from cache file based on task name."""
     cache_file = get_cache_file_path(task_name)
 
@@ -500,7 +517,9 @@ def load_recommendations_cache(task_name) -> Any:
         return None
 
 
-def _save_cluster_partial(task_name, cluster_display, executions, stats) -> Any:
+def _save_cluster_partial(
+    task_name: str, cluster_display: str, executions: list[dict[str, Any]], stats: Any
+) -> Any:
     """Checkpoint one cluster's collected data to disk immediately after it finishes.
 
     Files land in .analyze_cache/partial/{task}_{cluster}.json so that a restart
@@ -531,7 +550,7 @@ def _save_cluster_partial(task_name, cluster_display, executions, stats) -> Any:
         )
 
 
-def _load_completed_partials(task_name) -> Any:
+def _load_completed_partials(task_name: str) -> Any:
     """Load all previously checkpointed cluster data for task_name.
 
     Returns:
@@ -557,7 +576,7 @@ def _load_completed_partials(task_name) -> Any:
     return result
 
 
-def _clear_cluster_partials(task_name) -> Any:
+def _clear_cluster_partials(task_name: str) -> Any:
     """Delete all partial checkpoint files for task_name.
 
     Called when --analyze-again is passed to force a completely fresh collection run.
@@ -577,7 +596,7 @@ def _clear_cluster_partials(task_name) -> Any:
         )
 
 
-def save_csv_to_html(csv_data, task_name, timestamp_str) -> Any:
+def save_csv_to_html(csv_data: str, task_name: str, timestamp_str: str) -> Any:
     """Save CSV data as HTML table with sortable columns.
 
     Args:
@@ -767,7 +786,7 @@ def save_csv_to_html(csv_data, task_name, timestamp_str) -> Any:
 
 
 def save_comparison_table_to_html(
-    recommendations, current_resources, task_name, timestamp_str
+    recommendations: Any, current_resources: Any, task_name: str, timestamp_str: str
 ) -> Any:
     """Save comparison table as HTML (non-sortable).
 
@@ -903,7 +922,11 @@ def save_comparison_table_to_html(
 
 
 def get_date_based_file_path(
-    task_name, file_type, date_str, timestamp_str=None, margin_pct=None
+    task_name: str,
+    file_type: str,
+    date_str: str,
+    timestamp_str: str | None = None,
+    margin_pct: int | float | None = None,
 ) -> Any:
     """Get file path for date-based file naming.
 
@@ -940,7 +963,9 @@ def get_date_based_file_path(
     return cache_dir / filename
 
 
-def check_files_exist_for_date(task_name, file_type, date_str, margin_pct=None) -> Any:
+def check_files_exist_for_date(
+    task_name: str, file_type: str, date_str: str, margin_pct: int | float | None = None
+) -> Any:
     """Check if files already exist for a given date.
 
     Args:
@@ -961,7 +986,9 @@ def check_files_exist_for_date(task_name, file_type, date_str, margin_pct=None) 
     return html_path.exists() or json_path.exists()
 
 
-def check_comparison_file_exists_for_margin(task_name, date_str, margin_pct) -> Any:
+def check_comparison_file_exists_for_margin(
+    task_name: str, date_str: str, margin_pct: int | float
+) -> Any:
     """Check if comparison file exists for a specific margin.
 
     Args:

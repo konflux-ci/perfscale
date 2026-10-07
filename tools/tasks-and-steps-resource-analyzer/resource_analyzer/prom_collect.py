@@ -52,16 +52,16 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 def collect_individual_pod_executions(
-    task_name,
-    steps,
-    days=7,
-    hours=0,
-    lookback_seconds=None,
-    parallel_clusters=None,
-    debug=False,
-    current_resources=None,
-    pll_queries=2,
-    pll_pods=8,
+    task_name: str,
+    steps: list[str],
+    days: int = 7,
+    hours: int = 0,
+    lookback_seconds: int | None = None,
+    parallel_clusters: int | None = None,
+    debug: bool = False,
+    current_resources: dict[str, Any] | None = None,
+    pll_queries: int = 2,
+    pll_pods: int = 8,
 ) -> Any:
     """Collect individual pod execution data from all clusters.
 
@@ -131,7 +131,12 @@ def collect_individual_pod_executions(
     prom_sem = Semaphore(max(8, _cluster_cap * _pll_q_cap * _pll_pods_cap))
 
     def add_debug_sample(
-        reason, cluster_name, pod_name="", namespace="", step="", detail=""
+        reason: str,
+        cluster_name: str,
+        pod_name: str = "",
+        namespace: str = "",
+        step: str = "",
+        detail: str = "",
     ) -> Any:
         if not debug:
             return
@@ -177,7 +182,7 @@ def collect_individual_pod_executions(
             )
             return all_executions, collection_stats
 
-    def process_cluster_for_detailed_data(cluster_ctx) -> Any:
+    def process_cluster_for_detailed_data(cluster_ctx: str) -> Any:
         """Process a single cluster to get detailed pod execution data."""
         cluster_stats = _empty_collection_counters()
         cluster_name = get_cluster_display_name(cluster_ctx)
@@ -350,7 +355,7 @@ def collect_individual_pod_executions(
                 query_pool_size = max(1, _pll_pods_eff * min(4, pll_queries))
                 query_executor = ThreadPoolExecutor(max_workers=query_pool_size)
 
-                def _run_instant_metric(metric_query_pair) -> Any:
+                def _run_instant_metric(metric_query_pair: tuple[str, str]) -> Any:
                     """Run one instant PromQL query; retry transient failures."""
                     metric_name, query = metric_query_pair
                     last_exc = None
@@ -375,7 +380,7 @@ def collect_individual_pod_executions(
                                 time.sleep(0.4 * (attempt + 1))
                     return metric_name, last_exc
 
-                def _process_pod_batch(item) -> Any:
+                def _process_pod_batch(item: Any) -> Any:
                     """Process one (step, step_name, namespace, pod_batch) work item."""
                     step, step_name, namespace, pod_batch = item
                     records: list[dict[str, Any]] = []

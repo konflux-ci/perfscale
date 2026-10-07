@@ -9,7 +9,7 @@ from typing import Any
 from .task_yaml import normalize_step_name_for_compare
 
 
-def parse_csv_data(csv_text) -> Any:
+def parse_csv_data(csv_text: str) -> Any:
     """Parse CSV data (same format as wrapper script or detailed_executions_to_csv output)."""
     data: list[dict[str, Any]] = []
     lines = [line for line in csv_text.strip().split("\n") if line.strip()]
@@ -28,7 +28,7 @@ def parse_csv_data(csv_text) -> Any:
     return data
 
 
-def round_memory_to_standard(mb) -> Any:
+def round_memory_to_standard(mb: Any) -> Any:
     """Round memory to standard Kubernetes values.
 
     For values < 1Gi: round to increments of 64Mi (64Mi, 128Mi, 192Mi, 256Mi, etc.)
@@ -65,7 +65,7 @@ def round_memory_to_standard(mb) -> Any:
         return rounded_gi * 1024
 
 
-def mb_to_kubernetes(mb) -> Any:
+def mb_to_kubernetes(mb: Any) -> Any:
     """Convert MB to Kubernetes memory format with standard rounding."""
     mb = float(mb)
     rounded_mb = round_memory_to_standard(mb)
@@ -78,7 +78,7 @@ def mb_to_kubernetes(mb) -> Any:
         return f"{int(gi)}Gi"
 
 
-def round_cpu_to_standard(cores) -> Any:
+def round_cpu_to_standard(cores: Any) -> Any:
     """Round CPU to standard Kubernetes values.
 
     Rounds UP to next highest increment of 50m (50m, 100m, 150m, 200m, etc.)
@@ -105,7 +105,7 @@ def round_cpu_to_standard(cores) -> Any:
     return rounded_m / 1000.0
 
 
-def cores_to_kubernetes(cores) -> Any:
+def cores_to_kubernetes(cores: Any) -> Any:
     """Convert cores to Kubernetes CPU format, always in millicores."""
     cores = float(cores)
     rounded_cores = round_cpu_to_standard(cores)
@@ -115,7 +115,7 @@ def cores_to_kubernetes(cores) -> Any:
     return f"{millicores}m"
 
 
-def parse_cpu_value(cpu_str) -> Any:
+def parse_cpu_value(cpu_str: Any) -> Any:
     """Parse CPU value from format like '3569m' or '4.5'."""
     if not cpu_str or cpu_str == "0m" or cpu_str == "0":
         return 0.0
@@ -124,7 +124,7 @@ def parse_cpu_value(cpu_str) -> Any:
     return float(cpu_str)
 
 
-def _percentile(sorted_values, p) -> Any:
+def _percentile(sorted_values: Any, p: Any) -> Any:
     """Return the value at percentile p (0..1) from a sorted list. Empty -> 0."""
     if not sorted_values:
         return 0
@@ -133,7 +133,7 @@ def _percentile(sorted_values, p) -> Any:
     return sorted_values[idx]
 
 
-def detailed_executions_to_csv(executions) -> Any:
+def detailed_executions_to_csv(executions: list[dict[str, Any]]) -> Any:
     """Build main pipeline CSV from detailed per-pod executions (single source of truth).
 
     Groups by (cluster, task, step); computes max, p95, p90, median for memory and CPU;
@@ -204,7 +204,7 @@ def detailed_executions_to_csv(executions) -> Any:
     return header + "\n" + "\n".join(rows)
 
 
-def _parse_cpu_millicores_for_verify(s) -> Any:
+def _parse_cpu_millicores_for_verify(s: Any) -> Any:
     """Parse CPU from main CSV e.g. '1194m' -> 1194."""
     s = (s or "").strip().rstrip("m")
     if not s:
@@ -215,7 +215,9 @@ def _parse_cpu_millicores_for_verify(s) -> Any:
         return 0
 
 
-def verify_aggregates_against_detailed(detailed_executions, aggregated_rows) -> Any:
+def verify_aggregates_against_detailed(
+    detailed_executions: list[dict[str, Any]], aggregated_rows: Any
+) -> Any:
     """Verify aggregated rows match recomputation from detailed executions.
 
     Used for single-source sanity check: the main table is derived
@@ -293,7 +295,9 @@ def verify_aggregates_against_detailed(detailed_executions, aggregated_rows) -> 
     return all_ok, messages
 
 
-def analyze_step_data(step_name, step_rows, margin_pct=10, base="max") -> Any:
+def analyze_step_data(
+    step_name: str, step_rows: Any, margin_pct: int | float = 10, base: str = "max"
+) -> Any:
     """Analyze data for a specific step and return recommendations.
 
     Args:
@@ -415,7 +419,7 @@ def analyze_step_data(step_name, step_rows, margin_pct=10, base="max") -> Any:
     }
 
 
-def analyze_step_data_all_bases(step_name, step_rows, margin_pct=5) -> Any:
+def analyze_step_data_all_bases(step_name: str, step_rows: Any, margin_pct: int | float = 5) -> Any:
     """Analyze data for a specific step and return recommendations for all base metrics.
 
     Args:
@@ -545,7 +549,10 @@ def analyze_step_data_all_bases(step_name, step_rows, margin_pct=5) -> Any:
 
 
 def print_comparison_table(
-    recommendations, current_resources=None, task_name=None, save_html=True
+    recommendations: Any,
+    current_resources: Any = None,
+    task_name: str | None = None,
+    save_html: Any = True,
 ) -> Any:
     """Print comparison table of current vs proposed resource limits.
 
@@ -628,12 +635,12 @@ def print_comparison_table(
 
 
 def print_analysis(
-    recommendations,
-    margin_pct,
-    base="max",
-    current_resources=None,
-    task_name=None,
-    save_comparison_html=True,
+    recommendations: Any,
+    margin_pct: int | float,
+    base: str = "max",
+    current_resources: Any = None,
+    task_name: str | None = None,
+    save_comparison_html: Any = True,
 ) -> Any:
     """Print analysis results.
 

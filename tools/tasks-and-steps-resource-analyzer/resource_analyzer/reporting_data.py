@@ -25,12 +25,12 @@ from .task_yaml import normalize_step_name_for_compare
 
 
 def save_analyzed_data(
-    task_name,
-    csv_data,
-    date_str,
-    steps_without_observability_data=None,
-    cluster_coverage_report=None,
-    days_requested=None,
+    task_name: str,
+    csv_data: str,
+    date_str: str,
+    steps_without_observability_data: list[str] | None = None,
+    cluster_coverage_report: dict[str, Any] | None = None,
+    days_requested: int | None = None,
 ) -> Any:
     """Save analyzed data (CSV) as HTML and JSON files.
 
@@ -229,7 +229,12 @@ def save_analyzed_data(
 
 
 def _write_one_step_detailed_files(
-    cache_dir, task_name, step_name, step_executions, date_str, timestamp_suffix=None
+    cache_dir: Any,
+    task_name: str,
+    step_name: str,
+    step_executions: Any,
+    date_str: str,
+    timestamp_suffix: Any = None,
 ) -> Any:
     """Write HTML, JSON, and CSV for a single step.
 
@@ -440,7 +445,9 @@ def _write_one_step_detailed_files(
     return html_path, json_path, csv_path
 
 
-def save_detailed_per_step_data(task_name, executions_data, date_str) -> Any:
+def save_detailed_per_step_data(
+    task_name: str, executions_data: list[dict[str, Any]], date_str: str
+) -> Any:
     """Save detailed per-step pod execution data as one HTML, JSON, and CSV per step.
 
     Filenames: {task}_analyzed_data_detailed_step_{step_name}_{date}[_{time}].html/json/csv
@@ -484,7 +491,7 @@ def save_detailed_per_step_data(task_name, executions_data, date_str) -> Any:
     return result_paths
 
 
-def split_existing_detailed_per_step_json_to_per_step_files(json_path) -> Any:
+def split_existing_detailed_per_step_json_to_per_step_files(json_path: str) -> Any:
     """One-time helper: read a combined detailed_per_step JSON and write one HTML/JSON/CSV per step.
 
     Args:
@@ -520,16 +527,16 @@ def split_existing_detailed_per_step_json_to_per_step_files(json_path) -> Any:
 
 
 def save_comparison_data_all_bases(
-    task_name,
-    all_recommendations_by_base,
-    current_resources,
-    margin_pct,
-    date_str,
-    use_timestamp=False,
-    steps_without_observability_data=None,
-    cluster_coverage_report=None,
-    days_requested=None,
-    detailed_executions=None,
+    task_name: str,
+    all_recommendations_by_base: dict[str, list[Any]],
+    current_resources: Any,
+    margin_pct: int | float,
+    date_str: str,
+    use_timestamp: bool = False,
+    steps_without_observability_data: list[str] | None = None,
+    cluster_coverage_report: dict[str, Any] | None = None,
+    days_requested: int | None = None,
+    detailed_executions: Any = None,
 ) -> Any:
     """Save comparison data for all base metrics as HTML and JSON.
 
@@ -835,7 +842,7 @@ def save_comparison_data_all_bases(
     return html_path, json_path
 
 
-def load_analyzed_data(task_name, date_str) -> Any:
+def load_analyzed_data(task_name: str, date_str: str) -> Any:
     """Load analyzed data from JSON file.
 
     Tries date-only format first, then looks for latest date+timestamp format.
@@ -884,7 +891,7 @@ def load_analyzed_data(task_name, date_str) -> Any:
         return None
 
 
-def load_comparison_data(task_name, date_str, margin_pct) -> Any:
+def load_comparison_data(task_name: str, date_str: str, margin_pct: int | float) -> Any:
     """Load comparison data from JSON file for a specific margin.
 
     Tries date-only format first, then looks for latest date+timestamp format.
@@ -936,7 +943,7 @@ def load_comparison_data(task_name, date_str, margin_pct) -> Any:
         return None
 
 
-def find_latest_analysis_date(task_name) -> Any:
+def find_latest_analysis_date(task_name: str) -> Any:
     """Find the latest analysis date for a task.
 
     Handles both date-only (YYYYMMDD) and date+timestamp (YYYYMMDD_HHMMSS) formats.
