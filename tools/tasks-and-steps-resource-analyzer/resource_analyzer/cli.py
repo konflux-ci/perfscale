@@ -1,36 +1,11 @@
 """CLI entrypoint for the tasks/steps resource analyzer."""
 
 import argparse
-import csv
-import html
-import json
-import os
-import re
-import shutil
 import subprocess
 import sys
-import tempfile
 import time
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from pathlib import Path
-from threading import Event, Lock, Semaphore, Thread
-
-try:
-    import requests
-    import urllib3
-    import yaml
-except ImportError:
-    print(
-        "Error: Missing required library. Install with: pip install requests pyyaml",
-        file=sys.stderr,
-    )
-    sys.exit(1)
-
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-from .paths import TOOL_DIR
 
 from .clusters import (
     check_cluster_connectivity,
@@ -38,6 +13,7 @@ from .clusters import (
     read_wrapper_config,
     validate_wrapper_steps,
 )
+from .paths import TOOL_DIR
 from .prom import (
     POD_BATCH_SIZE,
     collect_individual_pod_executions,
@@ -49,7 +25,6 @@ from .reporting import (
     check_comparison_file_exists_for_margin,
     check_files_exist_for_date,
     compute_cluster_coverage_report,
-    compute_heavy_tail_warnings,
     find_latest_analysis_date,
     load_analyzed_data,
     load_comparison_data,
@@ -61,7 +36,6 @@ from .stats import (
     analyze_step_data_all_bases,
     detailed_executions_to_csv,
     parse_csv_data,
-    print_analysis,
     print_comparison_table,
     verify_aggregates_against_detailed,
 )
@@ -71,6 +45,7 @@ from .task_yaml import (
     fetch_yaml_content,
     normalize_step_name_for_compare,
 )
+
 
 def main():
     _script_start = time.time()
@@ -840,5 +815,3 @@ Examples:
     elapsed = time.time() - _script_start
     mins, secs = divmod(int(elapsed), 60)
     print(f"\nTotal time: {mins}m {secs}s", file=sys.stderr)
-
-

@@ -1,36 +1,12 @@
 """Aggregation, recommendations, and verification helpers."""
 
-import argparse
 import csv
-import html
-import json
-import os
-import re
-import shutil
-import subprocess
 import sys
-import tempfile
-import time
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from pathlib import Path
-from threading import Event, Lock, Semaphore, Thread
-
-try:
-    import requests
-    import urllib3
-    import yaml
-except ImportError:
-    print(
-        "Error: Missing required library. Install with: pip install requests pyyaml",
-        file=sys.stderr,
-    )
-    sys.exit(1)
-
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 from .task_yaml import normalize_step_name_for_compare
+
 
 def parse_csv_data(csv_text):
     """Parse CSV data (same format as wrapper script or detailed_executions_to_csv output)."""
@@ -717,5 +693,3 @@ def print_analysis(
         )
 
     return comparison_html_path
-
-

@@ -1,34 +1,9 @@
 """Terminal progress spinner helpers."""
 
-import argparse
-import csv
-import html
-import json
-import os
-import re
 import shutil
-import subprocess
 import sys
-import tempfile
 import time
-from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
-from pathlib import Path
-from threading import Event, Lock, Semaphore, Thread
-
-try:
-    import requests
-    import urllib3
-    import yaml
-except ImportError:
-    print(
-        "Error: Missing required library. Install with: pip install requests pyyaml",
-        file=sys.stderr,
-    )
-    sys.exit(1)
-
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+from threading import Lock
 
 _PROGRESS_IO_LOCK = Lock()
 _MAX_ACTIVE_CLUSTERS_IN_SPINNER = 2
@@ -129,5 +104,3 @@ def _spinner_thread(stop_event, progress_data=None, progress_lock=None, total_cl
     with _PROGRESS_IO_LOCK:
         sys.stderr.write("\r\033[K")
         sys.stderr.flush()
-
-

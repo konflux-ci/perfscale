@@ -1,26 +1,28 @@
 """Prometheus lookback helpers, HTTP client, and pod collection."""
 
-import argparse
-import csv
-import html
 import json
 import os
 import re
 import shutil
 import subprocess
 import sys
-import tempfile
 import time
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from pathlib import Path
 from threading import Event, Lock, Semaphore, Thread
+
+from .clusters import extract_cluster_list, get_cluster_display_name
+from .paths import TOOL_DIR
+from .progress import _spinner_thread
+from .reporting import (
+    _load_completed_partials,
+    _save_cluster_partial,
+)
 
 try:
     import requests
     import urllib3
-    import yaml
 except ImportError:
     print(
         "Error: Missing required library. Install with: pip install requests pyyaml",
@@ -30,14 +32,6 @@ except ImportError:
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-from .paths import TOOL_DIR
-
-from .clusters import extract_cluster_list, get_cluster_display_name
-from .progress import _progress_milestone, _spinner_thread
-from .reporting import (
-    _load_completed_partials,
-    _save_cluster_partial,
-)
 
 def format_promql_duration(seconds):
     """Format a lookback window for PromQL range selectors (e.g. 1d, 6h, 90m)."""
@@ -1046,7 +1040,7 @@ def collect_individual_pod_executions(
                             )
                     return records
 
-                # Build batch jobs: (step, step_name, namespace, [pods...]) — transport batches only.
+                # Batch jobs: (step, step_name, namespace, [pods...]) — transport only.
                 pods_by_ns = defaultdict(list)
                 for pod_name, namespace in pods:
                     pods_by_ns[namespace].append(pod_name)
@@ -1204,5 +1198,3 @@ def collect_individual_pod_executions(
         print(file=sys.stderr)
 
     return all_executions, collection_stats
-
-
