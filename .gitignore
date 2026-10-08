@@ -1,8 +1,23 @@
-.*.swp
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
 .ruff_cache/
 venv/
-__pycache__/
+.venv/
+.env
 
+# Editor / OS
+.*.swp
+*.swp
+*.swo
+.DS_Store
+.vscode/
+.idea/
+
+# Agent tooling
 .agentready/
 
 # Installed agent skills (restored via: npx skills@latest experimental_install)
