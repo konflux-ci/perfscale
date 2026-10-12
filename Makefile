@@ -1,16 +1,18 @@
 .DEFAULT_GOAL := help
-.PHONY: help bootstrap check check-all test type-check
+.PHONY: help bootstrap setup check check-all test type-check
 
 help:
 	@echo "Available targets:"
 	@echo "  help                 - Show this help message"
 	@echo "  bootstrap            - Install all development tools"
+	@echo "  setup                - Alias for bootstrap (one-command setup)"
 	@echo "  check                - Run checks on staged changes"
 	@echo "  check-all            - Run checks on all files"
 	@echo "  test                 - Run Python tests (pytest)"
 	@echo "  type-check           - Run Python type-check (mypy)"
 
-bootstrap:
+# Idempotent one-command setup (safe to re-run).
+bootstrap setup:
 	@echo "==> Installing Python 3.12 (via uv)..."
 	uv python install 3.12
 	@echo "==> Installing pre-commit..."
