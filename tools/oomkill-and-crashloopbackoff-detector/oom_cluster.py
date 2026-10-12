@@ -190,6 +190,35 @@ def get_current_context(retries: int, oc_timeout_seconds: int) -> str:
 
 
 def short_cluster_name(full_ctx: str) -> str:
+    """Derive a stable short cluster id from a kube context or API URL.
+
+    ROSA context form::
+        .../api-<cluster>-<hash>-pN-openshiftapps-com:PORT/...
+    DNS form::
+        api.<cluster>.<hash>.pN.openshiftapps.com
+
+    ``<cluster>`` may contain more than three hyphen segments (e.g.
+    ``kflux-c-prd-e01`` / ``kflux-c-prd-i01``). The previous regex only kept
+    three segments and collapsed both to ``kflux-c-prd``, which made tickets
+    and artifact paths ambiguous for assignees.
+    """
+    # Context / hyphenated hostname: api-<cluster>-<hash>-pN-openshiftapps-com
+    m = re.search(
+        r"api-(.+?)-[a-z0-9]{3,}-p\d+-openshiftapps-com",
+        full_ctx,
+        re.IGNORECASE,
+    )
+    if m:
+        return m.group(1)
+    # DNS: api.<cluster>.<hash>.pN.openshiftapps.com
+    m = re.search(
+        r"api\.([a-z0-9-]+)\.[a-z0-9]+\.p\d+\.openshiftapps\.com",
+        full_ctx,
+        re.IGNORECASE,
+    )
+    if m:
+        return m.group(1)
+    # Legacy 3-segment fallback for odd non-ROSA shapes
     m = re.search(r"api-([^-]+-[^-]+-[^-]+)", full_ctx)
     if m:
         return m.group(1)
