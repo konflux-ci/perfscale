@@ -51,3 +51,7 @@ Single-context layout. See `docs/agents/domain.md`.
 ### Design docs
 
 Preconditions, invariants, rationale: `docs/design/`. Update when changing OOM detector scan/artifacts or resource analyzer metrics/recommendations.
+
+### Architecture decisions
+
+ADRs (Status / Context / Decision / Consequences): `docs/adr/`.
