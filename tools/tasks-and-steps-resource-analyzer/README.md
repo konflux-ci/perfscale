@@ -202,15 +202,23 @@ Sort by `Final Memory Usage` or `Peak Disk Read` to quickly spot outlier workloa
 **Recommendation for Konflux production tasks:** Start with P95 + 5% margin. If the comparison
 report shows significant violators for P95 (especially large or well-known tenants), consider MAX.
 
-**For OOM relief (containers already hitting the limit):** prefer **MAX + margin**, not P95.
+**For OOM relief (containers already hitting the limit):** prefer the **MAX** column, not P95.
 P95 is a cost/safety balance for right-sizing; it will leave the heaviest historical runs under-provisioned.
 If the step already OOMKilled, size from the observed peak (MAX), then re-check violators in the
 comparison HTML.
 
+**Important — margin does not raise MAX memory above the observed peak.** The analyzer computes
+`base × (1 + margin/100)`, then **caps memory at `mem_max_max`** (the highest observed value). So for
+base = MAX, the `%` margin collapses to zero for memory; any extra Mi usually comes only from
+Kubernetes rounding (next 64Mi / Gi). If you need headroom *past* the observed peak (e.g. OOMs at
+the scrape-interval blind spot), bump the YAML manually above the MAX recommendation (or use a
+tenant override). Margin still applies normally for P95 / P90 / Median.
+
 **Calculation:**
 ```
-recommended = max_across_clusters(base_metric) × (1 + margin / 100)
-# rounded UP to next 64Mi increment (< 1Gi) or whole Gi (≥ 1Gi) for memory
+recommended = min(mem_max_max, max_across_clusters(base_metric) × (1 + margin / 100))  # memory
+# CPU similarly applies margin, with its own cap relative to observed max
+# then rounded UP to next 64Mi increment (< 1Gi) or whole Gi (≥ 1Gi) for memory
 # rounded UP to next 50m for CPU, minimum 50m
 ```
 
