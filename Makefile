@@ -11,7 +11,6 @@ help:
 	@echo "  test                 - Run Python tests (pytest)"
 	@echo "  type-check           - Run Python type-check (mypy)"
 
-# Idempotent one-command setup (safe to re-run).
 bootstrap setup:
 	@echo "==> Installing Python 3.12 (via uv)..."
 	uv python install 3.12
