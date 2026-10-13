@@ -202,12 +202,85 @@ Sort by `Final Memory Usage` or `Peak Disk Read` to quickly spot outlier workloa
 **Recommendation for Konflux production tasks:** Start with P95 + 5% margin. If the comparison
 report shows significant violators for P95 (especially large or well-known tenants), consider MAX.
 
+**For OOM relief (containers already hitting the limit):** prefer **MAX + margin**, not P95.
+P95 is a cost/safety balance for right-sizing; it will leave the heaviest historical runs under-provisioned.
+If the step already OOMKilled, size from the observed peak (MAX), then re-check violators in the
+comparison HTML.
+
 **Calculation:**
 ```
 recommended = max_across_clusters(base_metric) × (1 + margin / 100)
 # rounded UP to next 64Mi increment (< 1Gi) or whole Gi (≥ 1Gi) for memory
 # rounded UP to next 50m for CPU, minimum 50m
 ```
+
+---
+
+## Workflow: Grafana OOM dashboard → analyzer
+
+Use this when someone asks “which tasks are OOMKilling?” and you need concrete
+`computeResources` recommendations from cluster Prometheus.
+
+### 1. Export OOM series from Grafana (Safari / AppSRE)
+
+Dashboard: **OOMKilled Containers (Tekton Task Steps)** (uid `afbir89ys4ge8a`), datasource RHOBS /
+Observatorium. Filter with `source_cluster` as needed.
+
+1. Open each panel’s query inspector / data view.
+2. Export **CSV — Series joined by time** (not dashboard JSON, and not a single-series export).
+3. Prefer the **Pods** (or Containers) join-by-time CSV: one column per OOM series; column labels
+   include `container`, `namespace`, `pod`, and `source_cluster`.
+
+Example local files (names vary by export time):
+
+```text
+~/OOMKilled Pods-data-as-joinbyfield-….csv
+~/OOMKilled Containers (Tekton Task Steps)-data-as-joinbyfield-….csv
+```
+
+### 2. Rank steps / tasks from the CSV
+
+Count distinct series (columns) per `container=` / step name. Map `step-<name>` → Tekton Task
+that owns that step (e.g. `step-rpms-signature-scan` → `rpms-signature-scan`,
+`step-prefetch-dependencies` → `prefetch-dependencies` / `prefetch-dependencies-oci-ta`).
+
+Top counts are your triage order for analyzer runs.
+
+### 3. Point `--file` at real Task YAML (not pipeline external-task stubs)
+
+`analyze_resource_limits.py` needs a Task manifest with `spec.steps` (and current
+`computeResources`). Build-definitions **pipeline `external-task` / `task_bundle` stubs** often
+fail with “Could not extract task name” — use the upstream Task YAML instead:
+
+| Task | Upstream YAML |
+|---|---|
+| `rpms-signature-scan` | [tekton-tools `rpms-signature-scan/0.2`](https://github.com/konflux-ci/tekton-tools/blob/main/tasks/rpms-signature-scan/0.2/rpms-signature-scan.yaml) |
+| `prefetch-dependencies-oci-ta` | [container-build-catalog `prefetch-dependencies-oci-ta`](https://github.com/konflux-ci/container-build-catalog/blob/main/task/prefetch-dependencies-oci-ta/prefetch-dependencies-oci-ta.yaml) |
+
+Prefer **`-oci-ta`** variants when both exist (what most Konflux pipelines run).
+
+### 4. Run the analyzer
+
+From this directory (venv active, clusters logged in — see [Quick Start](#quick-start)):
+
+```bash
+./analyze_resource_limits.py \
+  --file https://github.com/konflux-ci/tekton-tools/blob/main/tasks/rpms-signature-scan/0.2/rpms-signature-scan.yaml \
+  --analyze-again --margin 5 --days 15 --pll-clusters 4 --pll-queries 4
+
+./analyze_resource_limits.py \
+  --file https://github.com/konflux-ci/container-build-catalog/blob/main/task/prefetch-dependencies-oci-ta/prefetch-dependencies-oci-ta.yaml \
+  --analyze-again --margin 5 --days 15 --pll-clusters 4 --pll-queries 4
+```
+
+Open `.analyze_cache/*_comparison_data_margin-5_*.html`. For OOM tickets, use the **MAX** column;
+for routine right-sizing without recent OOMs, **P95** remains the default.
+
+### 5. Apply manually
+
+The tool never edits YAML. Copy recommended requests/limits into the Task (and regenerate
+oci-ta / min variants if that repo uses the task-generator). Watch for steps with **empty**
+current resources (common on some trusted-artifact steps) — those need an explicit first-time set.
 
 ---
 
