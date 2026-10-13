@@ -2,7 +2,7 @@
 
 ## Installation / Setup
 
-Bootstrap the development environment (installs Python via uv, pre-commit, jsonnet, jb, grafonnet vendor deps, and git hooks). Safe to re-run (`make setup` is an alias):
+Bootstrap the development environment (installs Python via uv, pre-commit, jsonnet, jb, grafonnet vendor deps, and git hooks). `make setup` is an alias for `make bootstrap`:
 
 ```bash
 make bootstrap
