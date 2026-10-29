@@ -48,6 +48,7 @@ local taskRunStubs = [
   '__results_durations_stats_taskruns__build_apply_tags__',
   '__results_durations_stats_taskruns__build_buildah__',
   '__results_durations_stats_taskruns__build_build_image_index__',
+  '__results_durations_stats_taskruns__build_clair_scan__',
   '__results_durations_stats_taskruns__build_roxctl_scan__',
   '__results_durations_stats_taskruns__build_clamav_scan__',
   '__results_durations_stats_taskruns__build_coverity_availability_check__',
