@@ -14,6 +14,7 @@ local memberClusters = [
   'https://api.stone-stage-p01.hpmt.p1.openshiftapps.com:6443/',
   'https://api.stone-stg-rh01.l2vh.p1.openshiftapps.com:6443/',
   'https://c111-e.us-east.containers.cloud.ibm.com:32325/',
+  'https://da837cbw0di4ab97asm0.vpe.private.us-east.containers.cloud.ibm.com:31533/',
 ];
 local testPhaseStubs = [
   '__results_measurements_HandleUser_',
@@ -46,7 +47,7 @@ local taskRunStubs = [
   '__results_durations_stats_taskruns__build_apply_tags__',
   '__results_durations_stats_taskruns__build_buildah__',
   '__results_durations_stats_taskruns__build_build_image_index__',
-  '__results_durations_stats_taskruns__build_clair_scan__',
+  '__results_durations_stats_taskruns__build_roxctl_scan__',
   '__results_durations_stats_taskruns__build_clamav_scan__',
   '__results_durations_stats_taskruns__build_coverity_availability_check__',
   '__results_durations_stats_taskruns__build_deprecated_image_check__',
