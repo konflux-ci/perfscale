@@ -12,9 +12,9 @@ from oom_artifacts import is_artifact_meaningful, save_pod_artifacts
 from oom_cluster import (
     check_cluster_connectivity,
     color,
+    is_plausible_cluster_name,
     parse_timestamp_to_iso,
     run_oc_subcommand,
-    is_plausible_cluster_name,
     short_cluster_name,
 )
 from oom_constants import (

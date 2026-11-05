@@ -203,9 +203,7 @@ def is_plausible_cluster_name(name: str | None) -> bool:
     if not n:
         return False
     low = n.lower()
-    if "serviceaccount" in low or low.startswith("system:") or low.startswith("system_"):
-        return False
-    return True
+    return not ("serviceaccount" in low or low.startswith("system:") or low.startswith("system_"))
 
 
 def short_cluster_name(full_ctx: str) -> str:
