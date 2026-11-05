@@ -26,10 +26,7 @@ def test_sa_suffix_context_still_yields_cluster_id():
 
 
 def test_bare_serviceaccount_rejected():
-    sa = (
-        "system:serviceaccount:perf-team-prometheus-reader:"
-        "perf-team-prometheus-reader-oomcrash-sa"
-    )
+    sa = "system:serviceaccount:perf-team-prometheus-reader:perf-team-prometheus-reader-oomcrash-sa"
     assert short_cluster_name(sa) == ""
     assert not is_plausible_cluster_name(sa)
     assert not is_plausible_cluster_name("")
