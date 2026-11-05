@@ -14,6 +14,7 @@ from oom_cluster import (
     color,
     parse_timestamp_to_iso,
     run_oc_subcommand,
+    is_plausible_cluster_name,
     short_cluster_name,
 )
 from oom_constants import (
@@ -370,6 +371,15 @@ def query_context(
     artifacts_root: Path | None = None,
 ) -> tuple[str, dict[str, Any], str | None]:
     cluster = short_cluster_name(context)
+    if not is_plausible_cluster_name(cluster):
+        err_msg = (
+            f"Context does not resolve to a real cluster id "
+            f"(got {cluster!r} from {context!r}); refusing ServiceAccount/system labels"
+        )
+        print(color(f"\n→ Skipping non-cluster context: {context}", YELLOW))
+        print(color(f"  [SKIP] {err_msg}", RED))
+        return cluster or "unknown", {}, err_msg
+
     print(color(f"\n→ Processing cluster: {cluster}", BLUE))
 
     ok, msg = check_cluster_connectivity(
@@ -587,6 +597,8 @@ def collect_rows(results: dict[str, Any], time_range_str: str = "1d") -> list[di
     # Skip _metadata if present
     for cluster, ns_map in results.items():
         if cluster == "_metadata":
+            continue
+        if not is_plausible_cluster_name(cluster):
             continue
         for ns, pods in ns_map.items():
             for pod_name, info in pods.items():

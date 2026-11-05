@@ -1,6 +1,6 @@
 """Unit tests for short_cluster_name (ROSA e01/i01 and classic 3-segment ids)."""
 
-from oom_cluster import short_cluster_name
+from oom_cluster import is_plausible_cluster_name, short_cluster_name
 
 
 def test_kflux_c_prd_e01_and_i01_are_distinct():
@@ -14,6 +14,26 @@ def test_kflux_c_prd_e01_and_i01_are_distinct():
 def test_kflux_c_stg_e01():
     ctx = "/api-kflux-c-stg-e01-3zdg-p3-openshiftapps-com:443/system:serviceaccount:x:y"
     assert short_cluster_name(ctx) == "kflux-c-stg-e01"
+
+
+def test_sa_suffix_context_still_yields_cluster_id():
+    ctx = (
+        "/api-kflux-prd-rh03-nnv1-p1-openshiftapps-com:6443/"
+        "system:serviceaccount:perf-team-prometheus-reader:"
+        "perf-team-prometheus-reader-oomcrash-sa"
+    )
+    assert short_cluster_name(ctx) == "kflux-prd-rh03"
+
+
+def test_bare_serviceaccount_rejected():
+    sa = (
+        "system:serviceaccount:perf-team-prometheus-reader:"
+        "perf-team-prometheus-reader-oomcrash-sa"
+    )
+    assert short_cluster_name(sa) == ""
+    assert not is_plausible_cluster_name(sa)
+    assert not is_plausible_cluster_name("")
+    assert is_plausible_cluster_name("stone-prod-p02")
 
 
 def test_classic_three_segment_names_unchanged():

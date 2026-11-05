@@ -13,7 +13,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
-from oom_cluster import color, report_generated_est
+from oom_cluster import color, is_plausible_cluster_name, report_generated_est
 from oom_constants import (
     _CODEOWNERS_ATEXIT_REGISTERED,
     _CODEOWNERS_TEMP_DIR,
@@ -829,7 +829,11 @@ def print_per_pod_summary(
             t = (row.get("type") or "").strip() or "OOMKilled"
             if t not in ("OOMKilled", "CrashLoopBackOff"):
                 continue
-            key = (t, row["date"], row["cluster"], row["namespace"])
+            cluster = row.get("cluster") or ""
+            # Drop historical CSV rows where cluster was a ServiceAccount string
+            if not is_plausible_cluster_name(cluster):
+                continue
+            key = (t, row["date"], cluster, row["namespace"])
             agg[key] += 1
 
         print()
