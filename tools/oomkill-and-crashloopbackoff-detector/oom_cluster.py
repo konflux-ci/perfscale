@@ -189,6 +189,25 @@ def get_current_context(retries: int, oc_timeout_seconds: int) -> str:
     return out.strip() if rc == 0 else ""
 
 
+def is_plausible_cluster_name(name: str | None) -> bool:
+    """True if ``name`` looks like a real cluster id (e.g. ``stone-prod-p02``).
+
+    Jenkins kubeconfigs often end with the Prometheus reader ServiceAccount
+    (``…/system:serviceaccount:…``). Falling back to the last path segment then
+    pollutes ``(cluster: …)`` in console/CSV output consumed by
+    konflux-oom-jira-automation.
+    """
+    if name is None:
+        return False
+    n = str(name).strip()
+    if not n:
+        return False
+    low = n.lower()
+    if "serviceaccount" in low or low.startswith("system:") or low.startswith("system_"):
+        return False
+    return True
+
+
 def short_cluster_name(full_ctx: str) -> str:
     """Derive a stable short cluster id from a kube context or API URL.
 
@@ -201,6 +220,9 @@ def short_cluster_name(full_ctx: str) -> str:
     ``kflux-c-prd-e01`` / ``kflux-c-prd-i01``). The previous regex only kept
     three segments and collapsed both to ``kflux-c-prd``, which made tickets
     and artifact paths ambiguous for assignees.
+
+    Never returns a ServiceAccount / ``system:`` string. If no plausible id can
+    be derived, returns ``""`` so callers can skip the context.
     """
     # Context / hyphenated hostname: api-<cluster>-<hash>-pN-openshiftapps-com
     m = re.search(
@@ -208,7 +230,7 @@ def short_cluster_name(full_ctx: str) -> str:
         full_ctx,
         re.IGNORECASE,
     )
-    if m:
+    if m and is_plausible_cluster_name(m.group(1)):
         return m.group(1)
     # DNS: api.<cluster>.<hash>.pN.openshiftapps.com
     m = re.search(
@@ -216,15 +238,30 @@ def short_cluster_name(full_ctx: str) -> str:
         full_ctx,
         re.IGNORECASE,
     )
-    if m:
+    if m and is_plausible_cluster_name(m.group(1)):
         return m.group(1)
     # Legacy 3-segment fallback for odd non-ROSA shapes
     m = re.search(r"api-([^-]+-[^-]+-[^-]+)", full_ctx)
-    if m:
+    if m and is_plausible_cluster_name(m.group(1)):
         return m.group(1)
     if "/" in full_ctx:
-        return full_ctx.split("/")[-1]
-    return full_ctx.replace("/", "_").replace(":", "_")
+        # Prefer any path segment that still encodes api-<cluster>-…
+        for part in full_ctx.split("/"):
+            m = re.search(
+                r"api-(.+?)-[a-z0-9]{3,}-p\d+-openshiftapps-com",
+                part,
+                re.IGNORECASE,
+            )
+            if m and is_plausible_cluster_name(m.group(1)):
+                return m.group(1)
+        tail = full_ctx.split("/")[-1]
+        if is_plausible_cluster_name(tail):
+            return tail
+        return ""
+    candidate = full_ctx.replace("/", "_").replace(":", "_")
+    if is_plausible_cluster_name(candidate):
+        return candidate
+    return ""
 
 
 def parse_timestamp_to_iso(ts: str) -> str:
